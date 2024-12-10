@@ -16,7 +16,7 @@ export default function ManagerHome({ navigation }) {
           <Text style={styles.sectionTitle}>Overview</Text>
           <TouchableOpacity
             style={styles.card}
-            onPress={() => handleNavigate('AccountValidationScreen')}
+            onPress={() => handleNavigate('UserPanel')}
           >
             <Text style={styles.cardText}>Pending account validation</Text>
             <Text style={styles.cardNumber}>10</Text>
