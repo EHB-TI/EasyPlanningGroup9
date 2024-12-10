@@ -5,6 +5,7 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import WorkerHome from './screens/WorkerHome';
 import ManagerHome from './screens/ManagerHome';
+import UserPanel from './screens/UserPanel'; // Import UserPanel screen
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +21,8 @@ export default function App() {
         <Stack.Screen name="WorkerHome" component={WorkerHome} />
         {/* Manager Home */}
         <Stack.Screen name="ManagerHome" component={ManagerHome} />
+        {/* User Panel */}
+        <Stack.Screen name="UserPanel" component={UserPanel} />
       </Stack.Navigator>
     </NavigationContainer>
   );

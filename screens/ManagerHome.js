@@ -14,15 +14,24 @@ export default function ManagerHome({ navigation }) {
         {/* Overview Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('AccountValidationScreen')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleNavigate('AccountValidationScreen')}
+          >
             <Text style={styles.cardText}>Pending account validation</Text>
             <Text style={styles.cardNumber}>10</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ShiftRequestScreen')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleNavigate('ShiftRequestScreen')}
+          >
             <Text style={styles.cardText}>Pending shift request</Text>
             <Text style={styles.cardNumber}>2</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ProductivityScreen')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleNavigate('ProductivityScreen')}
+          >
             <Text style={styles.cardText}>Update productivity</Text>
           </TouchableOpacity>
         </View>
@@ -30,16 +39,28 @@ export default function ManagerHome({ navigation }) {
         {/* Quick Action Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick action</Text>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ValidateAccountScreen')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleNavigate('UserPanel')}
+          >
             <Text style={styles.cardText}>Validate account</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('AdminPanelScreen')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleNavigate('UserPanel')}
+          >
             <Text style={styles.cardText}>Admin panel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card}onPress={() => handleNavigate('ManageShiftRequestScreen')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleNavigate('ManageShiftRequestScreen')}
+          >
             <Text style={styles.cardText}>Manage shift request</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('AddWorkersScreen')}>
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => handleNavigate('AddWorkersScreen')}
+          >
             <Text style={styles.cardText}>Add workers needed</Text>
           </TouchableOpacity>
         </View>
@@ -47,11 +68,17 @@ export default function ManagerHome({ navigation }) {
         {/* Notification Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notification</Text>
-          <TouchableOpacity style={styles.notification} onPress={() => handleNavigate('ShiftRequestDetailsScreen')}>
+          <TouchableOpacity
+            style={styles.notification}
+            onPress={() => handleNavigate('ShiftRequestDetailsScreen')}
+          >
             <Text style={styles.cardText}>New Shift request</Text>
             <Text style={styles.cardDetail}>Yassine</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.notification}onPress={() => handleNavigate('ShiftCancelationDetailsScreen')}>
+          <TouchableOpacity
+            style={styles.notification}
+            onPress={() => handleNavigate('ShiftCancelationDetailsScreen')}
+          >
             <Text style={styles.cardText}>Shift cancelation</Text>
             <Text style={styles.cardDetail}>Patrick</Text>
           </TouchableOpacity>
@@ -60,15 +87,24 @@ export default function ManagerHome({ navigation }) {
 
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleNavigate('HomeScreen')}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleNavigate('HomeScreen')}
+        >
           <Entypo name="home" size={24} color="black" />
           <Text style={styles.navItemText}>Home</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleNavigate('CalendarScreen')}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleNavigate('CalendarScreen')}
+        >
           <Entypo name="calendar" size={24} color="black" />
           <Text style={styles.navItemText}>Calendar</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => handleNavigate('MoreScreen')}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleNavigate('MoreScreen')}
+        >
           <Entypo name="dots-three-horizontal" size={24} color="black" />
           <Text style={styles.navItemText}>More</Text>
         </TouchableOpacity>
@@ -153,6 +189,6 @@ const styles = StyleSheet.create({
   navItemText: {
     fontSize: 16,
     color: '#23C882',
-    marginTop: 4, // Space between icon and text
+    marginTop: 4,
   },
 });
