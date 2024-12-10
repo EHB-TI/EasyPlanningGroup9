@@ -13,16 +13,21 @@ export default function LoginScreen({ navigation }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Fetch user role from Firestore
+      // Fetch user data from Firestore
       const userDoc = await getDoc(doc(db, 'users', user.uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
 
-        // Redirect based on role
-        if (userData.role === 'manager') {
-          navigation.navigate('ManagerHome');
+        // Check user status
+        if (userData.status === 'pending') {
+          Alert.alert('Account Pending', 'Your account is awaiting approval from a manager.');
+          navigation.navigate('PendingApproval'); // Redirect to pending approval screen
+        } else if (userData.role === 'manager') {
+          navigation.navigate('ManagerHome'); // Redirect manager to ManagerHome
+        } else if (userData.role === 'worker') {
+          navigation.navigate('WorkerHome'); // Redirect worker to WorkerHome
         } else {
-          navigation.navigate('WorkerHome');
+          Alert.alert('Error', 'Invalid role assigned to this account.');
         }
       } else {
         Alert.alert('Error', 'User data not found.');
@@ -34,8 +39,20 @@ export default function LoginScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
-      <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
+      <TextInput
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        style={styles.input}
+        keyboardType="email-address"
+      />
+      <TextInput
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        style={styles.input}
+      />
       <Button title="Login" onPress={handleLogin} />
       <Button title="Register" onPress={() => navigation.navigate('Register')} />
     </View>

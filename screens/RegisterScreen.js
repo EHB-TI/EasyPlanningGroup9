@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, StyleSheet, Alert, Text } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import { View, TextInput, Button, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 
 export default function RegisterScreen({ navigation }) {
-  // States for user inputs
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState('worker'); // Default role is 'worker'
-  const [contractType, setContractType] = useState('CDD'); // Default contract type for workers
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleRegister = async () => {
-    if (!email || !password || !firstName || !lastName) {
+    if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'All fields are required.');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match.');
       return;
     }
 
@@ -24,24 +27,18 @@ export default function RegisterScreen({ navigation }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Prepare user data for Firestore
-      const userData = {
+      // Save user data in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
         firstName,
         lastName,
+        phone,
         email,
-        role,
-      };
+        role: 'worker',
+        status: 'pending',
+      });
 
-      // Add contract type only for workers
-      if (role === 'worker') {
-        userData.contractType = contractType;
-      }
-
-      // Save user data to Firestore
-      await setDoc(doc(db, 'users', user.uid), userData);
-
-      Alert.alert('Success', 'Account created successfully!');
-      navigation.navigate('Login'); // Redirect to login screen
+      Alert.alert('Success', 'Account created successfully! Awaiting manager approval.');
+      navigation.navigate('PendingApproval');
     } catch (error) {
       Alert.alert('Registration Error', error.message);
     }
@@ -49,29 +46,50 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <TextInput placeholder="First Name" value={firstName} onChangeText={setFirstName} style={styles.input} />
-      <TextInput placeholder="Last Name" value={lastName} onChangeText={setLastName} style={styles.input} />
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" />
-      <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
-
-      <Text style={styles.label}>Role</Text>
-      <Picker selectedValue={role} onValueChange={(itemValue) => setRole(itemValue)} style={styles.picker}>
-        <Picker.Item label="Worker" value="worker" />
-        <Picker.Item label="Manager" value="manager" />
-      </Picker>
-
-      {role === 'worker' && (
-        <>
-          <Text style={styles.label}>Contract Type</Text>
-          <Picker selectedValue={contractType} onValueChange={(itemValue) => setContractType(itemValue)} style={styles.picker}>
-            <Picker.Item label="CDD" value="CDD" />
-            <Picker.Item label="CDI" value="CDI" />
-            <Picker.Item label="Student" value="Student" />
-          </Picker>
-        </>
-      )}
-
-      <Button title="Register" onPress={handleRegister} />
+      <Text style={styles.title}>Register</Text>
+      <TextInput
+        placeholder="First Name"
+        value={firstName}
+        onChangeText={setFirstName}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Last Name"
+        value={lastName}
+        onChangeText={setLastName}
+        style={styles.input}
+      />
+      <TextInput
+        placeholder="Phone"
+        value={phone}
+        onChangeText={setPhone}
+        style={styles.input}
+        keyboardType="phone-pad"
+      />
+      <TextInput
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        style={styles.input}
+        keyboardType="email-address"
+      />
+      <TextInput
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        style={styles.input}
+        secureTextEntry
+      />
+      <TextInput
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        style={styles.input}
+        secureTextEntry
+      />
+      <TouchableOpacity style={styles.button} onPress={handleRegister}>
+        <Text style={styles.buttonText}>Create</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -80,22 +98,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0faff',
     padding: 20,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 5,
-  },
-  picker: {
-    height: 50,
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#28a745',
     marginBottom: 20,
   },
-  label: {
-    fontSize: 16,
+  input: {
+    width: '100%',
+    backgroundColor: '#fff',
+    padding: 15,
+    marginBottom: 10,
+    borderRadius: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  button: {
+    backgroundColor: '#28a745',
+    padding: 15,
+    borderRadius: 5,
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  buttonText: {
+    color: '#fff',
     fontWeight: 'bold',
-    marginBottom: 5,
+    fontSize: 16,
   },
 });
