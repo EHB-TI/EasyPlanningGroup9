@@ -16,6 +16,7 @@ import { db } from '../firebaseConfig';
 const AdminPanelScreen = () => {
   const [loading, setLoading] = useState(true);
   const [sections, setSections] = useState([]);
+  const [expandedSections, setExpandedSections] = useState({});
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [fixDay, setFixDay] = useState('');
@@ -43,7 +44,7 @@ const AdminPanelScreen = () => {
           ...doc.data(),
         }));
 
-
+        // Map approved users into categories (Fixed Term, Permanent, Student)
         const approvedUsers = approvedSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -55,7 +56,6 @@ const AdminPanelScreen = () => {
           Student: approvedUsers.filter((user) => user.contract === 'Student'),
         };
 
-        
         const sectionsData = [
           {
             title: 'Pending Users',
@@ -76,6 +76,14 @@ const AdminPanelScreen = () => {
         ];
 
         setSections(sectionsData);
+
+        // Initialize expanded state (default to expanded)
+        const initialExpandedState = {};
+        sectionsData.forEach((section) => {
+          initialExpandedState[section.title] = true;
+        });
+        setExpandedSections(initialExpandedState);
+
         setLoading(false);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -85,6 +93,13 @@ const AdminPanelScreen = () => {
 
     fetchUsers();
   }, []);
+
+  const toggleSection = (title) => {
+    setExpandedSections((prevState) => ({
+      ...prevState,
+      [title]: !prevState[title], // Toggle the expanded state
+    }));
+  };
 
   const handleApprove = async () => {
     if (!fixDay || !role || !contractType) {
@@ -163,9 +178,15 @@ const AdminPanelScreen = () => {
   };
 
   const renderSectionHeader = ({ section }) => (
-    <View style={styles.sectionHeader}>
+    <TouchableOpacity
+      style={styles.sectionHeader}
+      onPress={() => toggleSection(section.title)}
+    >
       <Text style={styles.sectionTitle}>{section.title}</Text>
-    </View>
+      <Text style={styles.toggleText}>
+        {expandedSections[section.title] ? '-' : '+'}
+      </Text>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -181,7 +202,9 @@ const AdminPanelScreen = () => {
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
+        renderItem={({ item, section }) =>
+          expandedSections[section.title] ? renderItem({ item, section }) : null
+        }
         renderSectionHeader={renderSectionHeader}
         stickySectionHeadersEnabled
       />
@@ -234,6 +257,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f8ff',
   },
   sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: '#f8f9fa',
     padding: 15,
     borderBottomWidth: 1,
@@ -243,6 +269,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+  },
+  toggleText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#00BFA6',
   },
   pendingUserContainer: {
     backgroundColor: '#fff',
@@ -279,6 +310,22 @@ const styles = StyleSheet.create({
     padding: 10,
     alignItems: 'center',
     flex: 1,
+  },
+  userContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 15,
+    margin: 10,
+    elevation: 2,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  userDetails: {
+    fontSize: 14,
+    color: '#555',
   },
   modalContainer: {
     flex: 1,
