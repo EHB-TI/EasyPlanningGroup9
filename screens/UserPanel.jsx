@@ -11,8 +11,9 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { collection, getDocs, query, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig'; 
+import { db } from '../firebaseConfig';
 
 const AdminPanelScreen = () => {
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,13 @@ const AdminPanelScreen = () => {
   const [role, setRole] = useState('');
   const [contractType, setContractType] = useState('');
   const [phone, setPhone] = useState('');
+
+
+  //voor picker opties
+  //zaterdag werkt niemand
+  const fixDayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sunday', ''];
+  const roleOptions = ['Manager', 'Worker', ''];
+  const contractOptions = ['CDI', 'CDD', 'Student', ''];
 
   useEffect(() => {
     fetchUsers();
@@ -209,8 +217,8 @@ const AdminPanelScreen = () => {
           <Text style={styles.pendingUserName}>
             {item.firstName} {item.lastName}
           </Text>
-          <Text style={styles.pendingUserDetails}>Email: {item.email}</Text>
-          <Text style={styles.pendingUserDetails}>Phone: {item.phone}</Text>
+          <Text style={styles.pendingUserDetails}> {item.email}</Text>
+          <Text style={styles.pendingUserDetails}>+{item.phone}</Text>
           <View style={styles.pendingButtonContainer}>
             <TouchableOpacity
               style={styles.originalApproveButton}
@@ -236,11 +244,11 @@ const AdminPanelScreen = () => {
           <Text style={styles.userName}>
             {item.firstName} {item.lastName}
           </Text>
-          <Text style={styles.userDetails}>Email: {item.email}</Text>
-          <Text style={styles.userDetails}>Phone: {item.phone}</Text>
-          <Text style={styles.userDetails}>Fix Day: {item.fixDay}</Text>
-          <Text style={styles.userDetails}>Role: {item.role}</Text>
-          <Text style={styles.userDetails}>Contract: {item.contract}</Text>
+          <Text style={styles.userDetails}> {item.email}</Text>
+          <Text style={styles.userDetails}>+{item.phone}</Text>
+          <Text style={styles.userDetails}> {item.fixDay}</Text>
+          <Text style={styles.userDetails}> {item.role}</Text>
+          <Text style={styles.userDetails}> {item.contract}</Text>
           <TouchableOpacity
             style={[styles.originalApproveButton, { marginTop: 10 }]}
             onPress={() => handleEditUser(item)}
@@ -296,47 +304,58 @@ const AdminPanelScreen = () => {
       {/* Approve Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Approve User</Text>
-          <TextInput
-            placeholder="Fix Day (e.g., Monday)"
-            style={styles.input}
-            value={fixDay}
-            onChangeText={setFixDay}
-          />
-          <TextInput
-            placeholder="Role (e.g., Manager or Worker)"
-            style={styles.input}
-            value={role}
-            onChangeText={setRole}
-          />
-          <TextInput
-            placeholder="Contract Type (CDI, CDD, Student)"
-            style={styles.input}
-            value={contractType}
-            onChangeText={setContractType}
-          />
-          <TextInput
-            placeholder="Phone number"
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-          />
-          <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={styles.originalApproveButton}
-              onPress={handleApprove}
+          <View style={styles.modalInnerContainer}>
+            <Text style={styles.modalTitle}>Approve User</Text>
+            <Picker
+              selectedValue={fixDay}
+              style={styles.picker}
+              onValueChange={(itemValue) => setFixDay(itemValue)}
             >
-              <Text style={styles.buttonText}>Confirm</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.originalRejectButton}
-              onPress={() => {
-                setModalVisible(false);
-                clearFormFields();
-              }}
+              {fixDayOptions.map((day, index) => (
+                <Picker.Item key={index} label={day || "Select Fix Day"} value={day} />
+              ))}
+            </Picker>
+            <Picker
+              selectedValue={role}
+              style={styles.picker}
+              onValueChange={(itemValue) => setRole(itemValue)}
             >
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
+              {roleOptions.map((r, index) => (
+                <Picker.Item key={index} label={r || "Select Role"} value={r} />
+              ))}
+            </Picker>
+            <Picker
+              selectedValue={contractType}
+              style={styles.picker}
+              onValueChange={(itemValue) => setContractType(itemValue)}
+            >
+              {contractOptions.map((c, index) => (
+                <Picker.Item key={index} label={c || "Select Contract Type"} value={c} />
+              ))}
+            </Picker>
+            <TextInput
+              placeholder="Phone number"
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.originalApproveButton}
+                onPress={handleApprove}
+              >
+                <Text style={styles.buttonText}>Confirm</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.originalRejectButton}
+                onPress={() => {
+                  setModalVisible(false);
+                  clearFormFields();
+                }}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -344,47 +363,58 @@ const AdminPanelScreen = () => {
       {/* Edit Modal */}
       <Modal visible={editModalVisible} animationType="slide" transparent>
         <View style={styles.modalContainer}>
-          <Text style={styles.modalTitle}>Edit User</Text>
-          <TextInput
-            placeholder="Fix Day (e.g., Monday)"
-            style={styles.input}
-            value={fixDay}
-            onChangeText={setFixDay}
-          />
-          <TextInput
-            placeholder="Role"
-            style={styles.input}
-            value={role}
-            onChangeText={setRole}
-          />
-          <TextInput
-            placeholder="Contract Type (CDI, CDD, Student)"
-            style={styles.input}
-            value={contractType}
-            onChangeText={setContractType}
-          />
-          <TextInput
-            placeholder="Phone number"
-            style={styles.input}
-            value={phone}
-            onChangeText={setPhone}
-          />
-          <View style={styles.modalButtons}>
-            <TouchableOpacity
-              style={styles.originalApproveButton}
-              onPress={handleUpdateUser}
+          <View style={styles.modalInnerContainer}>
+            <Text style={styles.modalTitle}>Edit User</Text>
+            <Picker
+              selectedValue={fixDay}
+              style={styles.picker}
+              onValueChange={(itemValue) => setFixDay(itemValue)}
             >
-              <Text style={styles.buttonText}>Update</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.originalRejectButton}
-              onPress={() => {
-                setEditModalVisible(false);
-                clearFormFields();
-              }}
+              {fixDayOptions.map((day, index) => (
+                <Picker.Item key={index} label={day || "Select Fix Day"} value={day} />
+              ))}
+            </Picker>
+            <Picker
+              selectedValue={role}
+              style={styles.picker}
+              onValueChange={(itemValue) => setRole(itemValue)}
             >
-              <Text style={styles.buttonText}>Cancel</Text>
-            </TouchableOpacity>
+              {roleOptions.map((r, index) => (
+                <Picker.Item key={index} label={r || "Select Role"} value={r} />
+              ))}
+            </Picker>
+            <Picker
+              selectedValue={contractType}
+              style={styles.picker}
+              onValueChange={(itemValue) => setContractType(itemValue)}
+            >
+              {contractOptions.map((c, index) => (
+                <Picker.Item key={index} label={c || "Select Contract Type"} value={c} />
+              ))}
+            </Picker>
+            <TextInput
+              placeholder="Phone number"
+              style={styles.input}
+              value={phone}
+              onChangeText={setPhone}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.originalApproveButton}
+                onPress={handleUpdateUser}
+              >
+                <Text style={styles.buttonText}>Update</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.originalRejectButton}
+                onPress={() => {
+                  setEditModalVisible(false);
+                  clearFormFields();
+                }}
+              >
+                <Text style={styles.buttonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -474,11 +504,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 20,
   },
+  modalInnerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+  },
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 20,
-    color: '#fff',
+    color: '#333',
     textAlign: 'center',
   },
   input: {
@@ -486,6 +521,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ccc'
   },
   modalButtons: {
     flexDirection: 'row',
@@ -500,6 +537,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  picker: {
+    backgroundColor: '#fff',
+    marginBottom: 10,
+    borderRadius: 5,
   },
 });
 
