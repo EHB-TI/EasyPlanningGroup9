@@ -9,6 +9,8 @@ import ManagerHome from './screens/ManagerHome';
 import UserPanel from './screens/UserPanel'; // Import UserPanel screen
 import ShiftDetailsScreen from './screens/shiftdetails';
 import ManageShiftRequestScreen from './screens/ManageShiftRequestScreen';
+import WorkerAccountDetails from './screens/WorkerAccountDetails'; // Import WorkerAccountDetails
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -18,12 +20,21 @@ export default function App() {
         <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="WorkerHome" component={WorkerHome} />
+        <Stack.Screen
+          name="WorkerHome"
+          component={WorkerHome}
+          options={{ title: 'Dashboard', headerShown: false }}
+        />
         <Stack.Screen name="ManagerHome" component={ManagerHome} />
         <Stack.Screen name="ShiftDetailsScreen" component={ShiftDetailsScreen} />
         <Stack.Screen name="ManageShiftRequestScreen" component={ManageShiftRequestScreen} />
-        {/* User Panel */}
         <Stack.Screen name="UserPanel" component={UserPanel} />
+        {/* Add WorkerAccountDetails */}
+        <Stack.Screen
+          name="WorkerAccountDetails"
+          component={WorkerAccountDetails}
+          options={{ title: 'Account Details' }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

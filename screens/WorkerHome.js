@@ -1,284 +1,320 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { auth, db } from '../firebaseConfig'; 
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 
-export default function ManagerHome({ navigation }) {
-  const [shifts, setShifts] = useState([]);
-  const [nextShift, setNextShift] = useState(null);
-  const [dates, setDates] = useState([]);
+export default function WorkerHome({ navigation, route }) {
+  // Simuler des données utilisateur
+  const { user } = route.params || { user: { firstName: 'Student', lastName: 'Example' } };
+  const firstLetter = user.firstName.charAt(0).toUpperCase(); // Récupérer la première lettre en majuscule
 
-  
-  useEffect(() => {
-    const shiftsQuery = query(collection(db, 'yourshift'), orderBy('date'));
-    const unsubscribe = onSnapshot(shiftsQuery, (snapshot) => {
-      const fetchedShifts = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        date: doc.data().date.toDate(), 
-      }));
-      setShifts(fetchedShifts);
-
-      
-      const now = new Date();
-      const upcomingShift = fetchedShifts.find((shift) => shift.date > now);
-      setNextShift(upcomingShift || null);
-    });
-
-    return () => unsubscribe(); 
-  }, []);
-
-  
-  const generateDates = () => {
-    const today = new Date();
-  
-    // Find the nearest Monday (next week's Monday if today is Monday)
-    const dayOfWeek = today.getDay();
-    const diffToNextMonday = dayOfWeek === 1 ? 7 : (8 - dayOfWeek);
-    const nextMonday = new Date(today.setDate(today.getDate() + diffToNextMonday));
-  
-    const endOfFourWeeks = new Date(nextMonday);
-    endOfFourWeeks.setDate(nextMonday.getDate() + 27); // 4 weeks minus 1 day
-  
-    const tempDates = [];
-    for (let d = new Date(nextMonday); d <= endOfFourWeeks; d.setDate(d.getDate() + 1)) {
-      const newDate = new Date(d); // Clone the date
-      if (newDate.getDay() !== 6) { // Exclude Saturdays
-        tempDates.push(newDate);
-      }
-    }
-    
-    setDates(tempDates);
+  // Gestion de la navigation vers la page de détails du compte
+  const handleNavigateToAccount = () => {
+    navigation.navigate('WorkerAccountDetails', { user });
   };
-  
-  // Call generateDates in useEffect
-  useEffect(() => {
-    generateDates();
-  }, []);
-  
 
+  // Confirmation d'annulation de shift
+  const handleCancelShift = (shiftId) => {
+    Alert.alert(
+      'Annuler shift',
+      'Ben je zeker dat je deze shift wilt annuleren?',
+      [
+        {
+          text: 'Non',
+          style: 'cancel',
+        },
+        {
+          text: 'Oui',
+          onPress: () => {
+            console.log(`Shift avec l'ID ${shiftId} a été annulé.`);
+            // Ajouter ici la logique pour annuler le shift (mise à jour Firebase, etc.)
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Confirmation de réservation de shift
+  const handleReserveShift = (shiftId) => {
+    Alert.alert(
+      'Shift reserveren',
+      'Wil je deze shift reserveren?',
+      [
+        {
+          text: 'Nee',
+          style: 'cancel',
+        },
+        {
+          text: 'Ja',
+          onPress: () => {
+            console.log(`Shift met ID ${shiftId} is gereserveerd.`);
+            // Ajouter ici la logique pour réserver le shift (mise à jour Firebase, etc.)
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Next Shift Section */}
-        <View style={styles.nextShiftCard}>
-          <Text style={styles.nextShiftTitle}>Volgende shift</Text>
-          {nextShift ? (
-            <>
-              <Text style={styles.nextShiftDate}>
-                {nextShift.date.toLocaleDateString('nl-NL')}
-              </Text>
-              <Text style={styles.nextShiftTime}>
-                {nextShift.date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} tot 16:00
-              </Text>
-              <Text style={styles.nextShiftDuration}>duur 7h30</Text>
-            </>
-          ) : (
-            <Text style={styles.noShiftText}>Geen toekomstige shifts</Text>
-          )}
+        {/* Header Section */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Hallo {user.firstName}</Text>
+          <TouchableOpacity style={styles.profileIcon} onPress={handleNavigateToAccount}>
+            <Text style={styles.profileInitial}>{firstLetter}</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* All Shifts Section */}
+        {/* Shift Counter Section */}
+        <View style={styles.shiftCounter}>
+          <Text style={styles.shiftCounterText}>Aantal shifts</Text>
+          <Text style={styles.shiftCounterNumber}>2 shifts</Text>
+        </View>
+
+        {/* Next Shift Section */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Volgende shift</Text>
+          <Text style={styles.cardText}>26/11/2024</Text>
+          <Text style={styles.cardText}>8:30 tot 16:00</Text>
+          <Text style={styles.cardText}>duur 7h30</Text>
+        </View>
+
+        {/* Planned Shifts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Geplande shifts</Text>
-          {shifts.map((shift) => (
-  <View key={shift.id} style={styles.shiftCard}>
-    <View>
-      <Text style={styles.shiftDay}>
-        {shift.date.toLocaleDateString('nl-NL', { weekday: 'long' })}
-      </Text>
-      <Text style={styles.shiftDetails}>
-        {shift.date.toLocaleDateString('nl-NL')} -{' '}
-        {shift.date.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
-      </Text>
-    </View>
-    <TouchableOpacity
-      style={styles.editButton}
-      onPress={() => navigation.navigate('ShiftDetailsScreen', { shiftId: shift.id })} // Pass shiftId
-    >
-      <Text style={styles.editButtonText}>Edit</Text>
-    </TouchableOpacity>
-  </View>
-))}
+          <View style={styles.plannedShift}>
+            <View>
+              <Text style={styles.plannedShiftDay}>Dinsdag</Text>
+              <Text style={styles.plannedShiftDate}>26 november 2024</Text>
+              <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => handleCancelShift('shiftId123')}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.plannedShift}>
+            <View>
+              <Text style={styles.plannedShiftDay}>Woensdag</Text>
+              <Text style={styles.plannedShiftDate}>27 november 2024</Text>
+              <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => handleCancelShift('shiftId124')}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Free Shifts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Vrije shifts</Text>
-          {dates.map((date, index) => {
-            if (index % 2 === 0) {
-              return (
-                <View key={index} style={styles.row}>
-                  <TouchableOpacity
-                    style={styles.freeShift}
-                    onPress={() => navigation.navigate('ShiftDetailsScreen', { date: dates[index] })}
-                  >
-                    <Text style={styles.freeShiftDay}>
-                      {dates[index].toLocaleDateString('nl-NL', { weekday: 'long' })}
-                    </Text>
-                    <Text style={styles.freeShiftDetails}>
-                      {dates[index].toLocaleDateString('nl-NL')}
-                    </Text>
-                  </TouchableOpacity>
+          <View style={styles.freeShift}>
+            <View>
+              <Text style={styles.freeShiftDay}>Donderdag</Text>
+              <Text style={styles.freeShiftDate}>28 november 2024</Text>
+              <Text style={styles.freeShiftTime}>8:30 tot 16:00</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.reserveButton}
+              onPress={() => handleReserveShift('shiftId125')}
+            >
+              <Text style={styles.reserveButtonText}>Reserveren</Text>
+            </TouchableOpacity>
+          </View>
 
-                  {dates[index + 1] && (
-                    <TouchableOpacity
-                      style={styles.freeShift}
-                      onPress={() =>
-                        navigation.navigate('ShiftDetailsScreen', { date: dates[index + 1] })
-                      }
-                    >
-                      <Text style={styles.freeShiftDay}>
-                        {dates[index + 1].toLocaleDateString('nl-NL', { weekday: 'long' })}
-                      </Text>
-                      <Text style={styles.freeShiftDetails}>
-                        {dates[index + 1].toLocaleDateString('nl-NL')}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            }
-            return null;
-          })}
+          <View style={styles.freeShift}>
+            <View>
+              <Text style={styles.freeShiftDay}>Vrijdag</Text>
+              <Text style={styles.freeShiftDate}>29 november 2024</Text>
+              <Text style={styles.freeShiftTime}>8:30 tot 16:00</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.reserveButton}
+              onPress={() => handleReserveShift('shiftId126')}
+            >
+              <Text style={styles.reserveButtonText}>Reserveren</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.freeShift}>
+            <View>
+              <Text style={styles.freeShiftDay}>Zaterdag</Text>
+              <Text style={styles.freeShiftDate}>30 november 2024</Text>
+              <Text style={styles.freeShiftTime}>8:30 tot 16:00</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.reserveButton}
+              onPress={() => handleReserveShift('shiftId127')}
+            >
+              <Text style={styles.reserveButtonText}>Reserveren</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </View>
   );
 }
 
-// Shift Details Screen
-export function ShiftDetailsScreen({ route }) {
-  const { date } = route.params;
-
-  return (
-    <View style={styles.detailsContainer}>
-      <Text style={styles.detailsText}>Details voor shift op:</Text>
-      <Text style={styles.detailsDate}>{new Date(date).toLocaleDateString()}</Text>
-    </View>
-  );
-}
-
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F9F9',
+    backgroundColor: '#F5F5F5',
+    paddingTop: 40, // Ajoute un espace en haut pour descendre le contenu
   },
   scrollContent: {
     padding: 16,
   },
-  nextShiftCard: {
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: 20, // Décale encore plus le header vers le bas
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  profileIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInitial: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  shiftCounter: {
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  shiftCounterText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  shiftCounterNumber: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  card: {
     backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 8,
-    marginBottom: 24,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
   },
-  nextShiftTitle: {
+  cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
+    color: '#333',
   },
-  nextShiftDate: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  nextShiftTime: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
-  nextShiftDuration: {
+  cardText: {
     fontSize: 14,
-    color: '#777',
-  },
-  noShiftText: {
-    fontSize: 14,
-    color: '#777',
+    color: '#555',
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
+    color: '#333',
   },
-  shiftCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
+  plannedShift: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 10,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
   },
-  shiftDay: {
+  plannedShiftDay: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#333',
   },
-  shiftDetails: {
+  plannedShiftDate: {
     fontSize: 14,
     color: '#555',
   },
-  editButton: {
-    backgroundColor: '#FF6F61',
-    paddingVertical: 6,
+  plannedShiftTime: {
+    fontSize: 14,
+    color: '#555',
+  },
+  cancelButton: {
+    backgroundColor: '#FF5722',
+    paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
-  editButtonText: {
-    color: '#FFF',
+  cancelButtonText: {
+    color: '#FFFFFF',
     fontSize: 14,
   },
-  row: {
+  freeShift: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12, // Space between rows
-  },
-  freeShift: {
-    flex: 1,
-    backgroundColor: '#23C882',
+    alignItems: 'center',
+    backgroundColor: '#E8F9E9',
     padding: 16,
     borderRadius: 8,
-    marginHorizontal: 6, // Space between the two columns
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   freeShiftDay: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#FFF',
+    color: '#333',
   },
-  freeShiftDetails: {
+  freeShiftDate: {
     fontSize: 14,
-    color: '#FFF',
-  },
-  detailsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#E8F9F9',
-  },
-  detailsText: {
-    fontSize: 18,
-    fontWeight: 'bold',
     color: '#555',
   },
-  detailsDate: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#23C882',
-    marginTop: 10,
+  freeShiftTime: {
+    fontSize: 14,
+    color: '#555',
+  },
+  reserveButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  reserveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
 });
