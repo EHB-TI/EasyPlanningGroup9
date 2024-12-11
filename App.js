@@ -7,7 +7,8 @@ import RegisterScreen from './screens/RegisterScreen';
 import WorkerHome from './screens/WorkerHome';
 import ManagerHome from './screens/ManagerHome';
 import UserPanel from './screens/UserPanel'; // Import UserPanel screen
-
+import ShiftDetailsScreen from './screens/shiftdetails';
+import ManageShiftRequestScreen from './screens/ManageShiftRequestScreen';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -19,6 +20,8 @@ export default function App() {
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="WorkerHome" component={WorkerHome} />
         <Stack.Screen name="ManagerHome" component={ManagerHome} />
+        <Stack.Screen name="ShiftDetailsScreen" component={ShiftDetailsScreen} />
+        <Stack.Screen name="ManageShiftRequestScreen" component={ManageShiftRequestScreen} />
         {/* User Panel */}
         <Stack.Screen name="UserPanel" component={UserPanel} />
       </Stack.Navigator>
