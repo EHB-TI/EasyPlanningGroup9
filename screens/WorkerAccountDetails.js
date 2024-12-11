@@ -26,9 +26,54 @@ export default function AccountDetails()
           />
         </View>
 
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Achternaam:</Text>
+          <TextInput
+            style={styles.input}
+            value={userDetails.lastName}
+            editable={false}
+          />
+        </View>
 
+        <View style={styles.inputContainer}>
+        <Text style={styles.label}>GSM:</Text>
+        <TextInput
+          style={styles.input}
+          value={userDetails.phone}
+          editable={false}
+        />
+      </View>
 
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>E-mail:</Text>
+        <TextInput
+          style={styles.input}
+          value={userDetails.email}
+          editable={false}
+        />
+      </View>
 
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Vaste Dagen:</Text>
+        <TextInput
+          style={styles.input}
+          value={userDetails.fixedDays}
+          editable={false}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Aantal uren:</Text>
+        <TextInput
+          style={styles.input}
+          value={userDetails.hours}
+          editable={false}
+        />
+      </View>
+
+      <TouchableOpacity style={styles.button} onPress={handleEdit}>
+        <Text style={styles.buttonText}>Wijzig gegevens</Text>
+      </TouchableOpacity>
         </ScrollView>
       );
 }
