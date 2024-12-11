@@ -28,12 +28,13 @@ const AdminPanelScreen = () => {
   const [contractType, setContractType] = useState('');
   const [phone, setPhone] = useState('');
 
-
-  //voor picker opties
-  //zaterdag werkt niemand
-  const fixDayOptions = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sunday', ''];
   const roleOptions = ['Manager', 'Worker', ''];
   const contractOptions = ['CDI', 'CDD', 'Student', ''];
+
+  // Allowed days (excluding Saturday if needed)
+  const allowedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'sunday'];
+  const minDays = 1;
+  const maxDays = 5;
 
   useEffect(() => {
     fetchUsers();
@@ -117,15 +118,70 @@ const AdminPanelScreen = () => {
   const toggleSection = (title) => {
     setExpandedSections((prevState) => ({
       ...prevState,
-      [title]: !prevState[title], // Toggle the expanded state
+      [title]: !prevState[title],
     }));
   };
+
+  
+  //fix dagen kiezen/wijzigen.
+
+const normalizeDay = (dayString) => {
+  const trimmed = dayString.trim();
+  const lower = trimmed.toLowerCase();
+  return { original: trimmed, normalized: lower };
+};
+
+const validateFixDay = () => {
+  const parts = fixDay.split(',').map(p => p.trim()).filter(Boolean);
+
+  const normalizedDays = [];
+  for (let p of parts) {
+    const { original, normalized } = normalizeDay(p);
+
+    // allowed days gebruiken 
+    if (!allowedDays.includes(normalized)) {
+      // dag bestaat niet
+      Alert.alert(
+        'Invalid Day',
+        `The entered day "${original}" is not recognized.\n\nPlease choose from: ${allowedDays.join(', ')}`
+      );
+      return false;
+    }
+
+    //check lowercase.
+    if (original !== normalized) {
+      // moet lowercase zijn
+      Alert.alert(
+        'Incorrect Format',
+        `The entered day "${original}" should be in all lowercase. Please write it as "${normalized}".`
+      );
+      return false;
+    }
+
+    normalizedDays.push(normalized);
+  }
+
+  const uniqueDays = Array.from(new Set(normalizedDays));
+  if (uniqueDays.length < minDays || uniqueDays.length > maxDays) {
+    Alert.alert(
+      'Invalid Number of Days',
+      `Please enter between ${minDays} and ${maxDays} distinct allowed days.`
+    );
+    return false;
+  }
+
+  //oke
+  return true;
+};
+  
 
   const handleApprove = async () => {
     if (!fixDay || !role || !contractType || !phone) {
       Alert.alert('Error', 'Please fill all fields.');
       return;
     }
+
+    if (!validateFixDay()) return;
 
     try {
       const userRef = doc(db, 'users', selectedUser.id);
@@ -181,10 +237,13 @@ const AdminPanelScreen = () => {
   };
 
   const handleUpdateUser = async () => {
-    if (!role || !contractType || !phone) {
+    if (!fixDay || !role || !contractType || !phone) {
       Alert.alert('Error', 'Please fill all fields.');
       return;
     }
+
+    if (!validateFixDay()) return;
+
     try {
       const userRef = doc(db, 'users', selectedUser.id);
       await updateDoc(userRef, {
@@ -196,7 +255,7 @@ const AdminPanelScreen = () => {
       Alert.alert('Success', `${selectedUser.firstName} updated successfully.`);
       setEditModalVisible(false);
       clearFormFields();
-      await fetchUsers(); // Refresh data after update
+      await fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
     }
@@ -224,6 +283,10 @@ const AdminPanelScreen = () => {
               style={styles.originalApproveButton}
               onPress={() => {
                 setSelectedUser(item);
+                setFixDay('');
+                setRole('');
+                setContractType('');
+                setPhone('');
                 setModalVisible(true);
               }}
             >
@@ -306,15 +369,14 @@ const AdminPanelScreen = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalInnerContainer}>
             <Text style={styles.modalTitle}>Approve User</Text>
-            <Picker
-              selectedValue={fixDay}
-              style={styles.picker}
-              onValueChange={(itemValue) => setFixDay(itemValue)}
-            >
-              {fixDayOptions.map((day, index) => (
-                <Picker.Item key={index} label={day || "Select Fix Day"} value={day} />
-              ))}
-            </Picker>
+            <TextInput
+              placeholder={`Fix Days (${minDays}-${maxDays} from ${allowedDays.join(', ')})`}
+              style={styles.input}
+              value={fixDay}
+              onChangeText={setFixDay}
+            />
+
+            <Text style={{fontWeight:'bold', marginTop:20}}>Select Role:</Text>
             <Picker
               selectedValue={role}
               style={styles.picker}
@@ -324,6 +386,8 @@ const AdminPanelScreen = () => {
                 <Picker.Item key={index} label={r || "Select Role"} value={r} />
               ))}
             </Picker>
+
+            <Text style={{fontWeight:'bold', marginTop:20}}>Select Contract Type:</Text>
             <Picker
               selectedValue={contractType}
               style={styles.picker}
@@ -333,6 +397,7 @@ const AdminPanelScreen = () => {
                 <Picker.Item key={index} label={c || "Select Contract Type"} value={c} />
               ))}
             </Picker>
+
             <TextInput
               placeholder="Phone number"
               style={styles.input}
@@ -365,15 +430,15 @@ const AdminPanelScreen = () => {
         <View style={styles.modalContainer}>
           <View style={styles.modalInnerContainer}>
             <Text style={styles.modalTitle}>Edit User</Text>
-            <Picker
-              selectedValue={fixDay}
-              style={styles.picker}
-              onValueChange={(itemValue) => setFixDay(itemValue)}
-            >
-              {fixDayOptions.map((day, index) => (
-                <Picker.Item key={index} label={day || "Select Fix Day"} value={day} />
-              ))}
-            </Picker>
+
+            <TextInput
+              placeholder={`Fix Days (${minDays}-${maxDays} from ${allowedDays.join(', ')})`}
+              style={styles.input}
+              value={fixDay}
+              onChangeText={setFixDay}
+            />
+
+            <Text style={{fontWeight:'bold', marginTop:20}}>Select Role:</Text>
             <Picker
               selectedValue={role}
               style={styles.picker}
@@ -383,6 +448,8 @@ const AdminPanelScreen = () => {
                 <Picker.Item key={index} label={r || "Select Role"} value={r} />
               ))}
             </Picker>
+
+            <Text style={{fontWeight:'bold', marginTop:20}}>Select Contract Type:</Text>
             <Picker
               selectedValue={contractType}
               style={styles.picker}
@@ -392,6 +459,7 @@ const AdminPanelScreen = () => {
                 <Picker.Item key={index} label={c || "Select Contract Type"} value={c} />
               ))}
             </Picker>
+
             <TextInput
               placeholder="Phone number"
               style={styles.input}
@@ -521,8 +589,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#ccc'
+    borderWidth:1,
+    borderColor:'#ccc'
   },
   modalButtons: {
     flexDirection: 'row',
@@ -542,7 +610,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 10,
     borderRadius: 5,
-  },
+  }
 });
 
 export default AdminPanelScreen;
