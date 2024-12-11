@@ -51,10 +51,7 @@ export default function ManagerHome({ navigation }) {
           >
             <Text style={styles.cardText}>Admin panel</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('ManageShiftRequestScreen')}
-          >
+          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ManageShiftRequestScreen')}>
             <Text style={styles.cardText}>Manage shift request</Text>
           </TouchableOpacity>
           <TouchableOpacity
