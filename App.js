@@ -28,12 +28,13 @@ export default function App() {
         <Stack.Screen name="ManagerHome" component={ManagerHome} />
         <Stack.Screen name="ShiftDetailsScreen" component={ShiftDetailsScreen} />
         <Stack.Screen name="ManageShiftRequestScreen" component={ManageShiftRequestScreen} />
-        <Stack.Screen name="UserPanel" component={UserPanel} />
+        <Stack.Screen name="UserPanel" component={UserPanel} options={{ headerShown: false }}
+ />
         {/* Add WorkerAccountDetails */}
         <Stack.Screen
           name="WorkerAccountDetails"
           component={WorkerAccountDetails}
-          options={{ title: 'Account Details' }}
+          options={{ title: 'Account Details', headerShown: false }}
         />
       </Stack.Navigator>
     </NavigationContainer>

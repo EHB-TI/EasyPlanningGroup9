@@ -1,12 +1,12 @@
 import React from "react";
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 
-export default function AccountDetails() {
+export default function AccountDetails({ navigation }) {
   const user = { firstName: "Lucas", lastName: "Huygen", phone: "+0032478965412", email: "naam@mail.com", fixedDays: "maandag, dinsdag...", hours: "20" };
   const firstLetter = user.firstName.charAt(0).toUpperCase(); // Récupérer la première lettre en majuscule
 
   const handleNavigateToAccount = () => {
-    console.log("Navigating to account details");
+    navigation.navigate('WorkerAccountDetails', { user });
   };
 
   const handleEdit = () => {
