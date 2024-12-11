@@ -1,41 +1,45 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 
-export default function AccountDetails() 
-{
-    const [userDetails, setUserDetails] = useState({
-        firstName: "Lucas",
-        lastName: "Huygen",
-        phone: "+0032478965412",
-        email: "naam@mail.com",
-        fixedDays: "maandag, dinsdag...",
-        hours: "20",
-      });
-    
-      return(
-        <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.header}>Account Details</Text>
-        <Text style={styles.subHeader}>Contract Type: soort type</Text>
-  
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Voornaam:</Text>
-          <TextInput
-            style={styles.input}
-            value={userDetails.firstName}
-            editable={false}
-          />
-        </View>
+export default function AccountDetails() {
+  const [userDetails, setUserDetails] = useState({
+    firstName: "Lucas",
+    lastName: "Huygen",
+    phone: "+0032478965412",
+    email: "naam@mail.com",
+    fixedDays: "maandag, dinsdag...",
+    hours: "20",
+  });
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Achternaam:</Text>
-          <TextInput
-            style={styles.input}
-            value={userDetails.lastName}
-            editable={false}
-          />
-        </View>
+  const handleEdit = () => {
+    // Logic for editing details can be added here
+    console.log("Edit button clicked");
+  };
 
-        <View style={styles.inputContainer}>
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.header}>Account Details</Text>
+      <Text style={styles.subHeader}>Contract Type: soort type</Text>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Voornaam:</Text>
+        <TextInput
+          style={styles.input}
+          value={userDetails.firstName}
+          editable={false}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Achternaam:</Text>
+        <TextInput
+          style={styles.input}
+          value={userDetails.lastName}
+          editable={false}
+        />
+      </View>
+
+      <View style={styles.inputContainer}>
         <Text style={styles.label}>GSM:</Text>
         <TextInput
           style={styles.input}
@@ -74,6 +78,51 @@ export default function AccountDetails()
       <TouchableOpacity style={styles.button} onPress={handleEdit}>
         <Text style={styles.buttonText}>Wijzig gegevens</Text>
       </TouchableOpacity>
-        </ScrollView>
-      );
+    </ScrollView>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flexGrow: 1,
+    padding: 20,
+    backgroundColor: "#E8F5E9",
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  subHeader: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#CCCCCC",
+    borderRadius: 5,
+    padding: 10,
+    backgroundColor: "#FFFFFF",
+  },
+  button: {
+    backgroundColor: "#4CAF50",
+    padding: 15,
+    borderRadius: 5,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+});
