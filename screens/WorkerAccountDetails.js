@@ -12,4 +12,23 @@ export default function AccountDetails()
         hours: "20",
       });
     
+      return(
+        <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.header}>Account Details</Text>
+        <Text style={styles.subHeader}>Contract Type: soort type</Text>
+  
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Voornaam:</Text>
+          <TextInput
+            style={styles.input}
+            value={userDetails.firstName}
+            editable={false}
+          />
+        </View>
+
+
+
+
+        </ScrollView>
+      );
 }
