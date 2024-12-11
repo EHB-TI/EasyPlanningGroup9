@@ -1,114 +1,98 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Entypo } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, Button, Alert, StyleSheet, TouchableOpacity } from 'react-native';
+import { collection, getDocs, updateDoc, deleteDoc, doc } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
-export default function ManagerHome({ navigation }) {
-  const handleNavigate = (screen) => {
-    navigation.navigate(screen); // Navigate to the specified screen
+export default function ManagerDashboard() {
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [approvedUsers, setApprovedUsers] = useState([]);
+
+  // Fetch pending and approved users from Firestore
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const querySnapshot = await getDocs(collection(db, 'users'));
+        const pending = [];
+        const approved = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.status === 'pending') {
+            pending.push({ id: doc.id, ...data });
+          } else if (data.status === 'approved') {
+            approved.push({ id: doc.id, ...data });
+          }
+        });
+        setPendingUsers(pending);
+        setApprovedUsers(approved);
+      } catch (error) {
+        Alert.alert('Error', 'Failed to load users.');
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // Approve a user
+  const handleApprove = async (userId) => {
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        status: 'approved',
+      });
+      Alert.alert('Success', 'User approved successfully!');
+      setPendingUsers((prev) => prev.filter((user) => user.id !== userId));
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
   };
+
+  // Reject a user
+  const handleReject = async (userId) => {
+    try {
+      await deleteDoc(doc(db, 'users', userId));
+      Alert.alert('Success', 'User rejected and deleted.');
+      setPendingUsers((prev) => prev.filter((user) => user.id !== userId));
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  // Render user item
+  const renderUser = (item, actions) => (
+    <View style={styles.card}>
+      <Text style={styles.cardTitle}>
+        {item.firstName} {item.lastName}
+      </Text>
+      <Text>Email: {item.email}</Text>
+      <Text>Phone: {item.phone}</Text>
+      <Text>Contract: {item.contractType || 'N/A'}</Text>
+      {actions && (
+        <View style={styles.buttons}>
+          <Button title="Approve" onPress={() => handleApprove(item.id)} />
+          <Button title="Reject" onPress={() => handleReject(item.id)} color="red" />
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Manager Dashboard</Text>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Overview Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Overview</Text>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('AccountValidationScreen')}
-          >
-            <Text style={styles.cardText}>Pending account validation</Text>
-            <Text style={styles.cardNumber}>10</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('ShiftRequestScreen')}
-          >
-            <Text style={styles.cardText}>Pending shift request</Text>
-            <Text style={styles.cardNumber}>2</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('ProductivityScreen')}
-          >
-            <Text style={styles.cardText}>Update productivity</Text>
-          </TouchableOpacity>
-        </View>
+      <Text style={styles.title}>Manager Dashboard</Text>
 
-        {/* Quick Action Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick action</Text>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('UserPanel')}
-          >
-            <Text style={styles.cardText}>Validate account</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('UserPanel')}
-          >
-            <Text style={styles.cardText}>Admin panel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('ManageShiftRequestScreen')}
-          >
-            <Text style={styles.cardText}>Manage shift request</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('AddWorkersScreen')}
-          >
-            <Text style={styles.cardText}>Add workers needed</Text>
-          </TouchableOpacity>
-        </View>
+      <Text style={styles.subtitle}>Pending Accounts</Text>
+      <FlatList
+        data={pendingUsers}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderUser(item, true)}
+        ListEmptyComponent={<Text style={styles.noData}>No pending accounts.</Text>}
+      />
 
-        {/* Notification Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notification</Text>
-          <TouchableOpacity
-            style={styles.notification}
-            onPress={() => handleNavigate('ShiftRequestDetailsScreen')}
-          >
-            <Text style={styles.cardText}>New Shift request</Text>
-            <Text style={styles.cardDetail}>Yassine</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.notification}
-            onPress={() => handleNavigate('ShiftCancelationDetailsScreen')}
-          >
-            <Text style={styles.cardText}>Shift cancelation</Text>
-            <Text style={styles.cardDetail}>Patrick</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('HomeScreen')}
-        >
-          <Entypo name="home" size={24} color="black" />
-          <Text style={styles.navItemText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('CalendarScreen')}
-        >
-          <Entypo name="calendar" size={24} color="black" />
-          <Text style={styles.navItemText}>Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('MoreScreen')}
-        >
-          <Entypo name="dots-three-horizontal" size={24} color="black" />
-          <Text style={styles.navItemText}>More</Text>
-        </TouchableOpacity>
-      </View>
+      <Text style={styles.subtitle}>Approved Workers</Text>
+      <FlatList
+        data={approvedUsers}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderUser(item, false)}
+        ListEmptyComponent={<Text style={styles.noData}>No approved workers.</Text>}
+      />
     </View>
   );
 }
@@ -116,79 +100,48 @@ export default function ManagerHome({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8F9F9',
+    padding: 20,
+    backgroundColor: '#f0faff',
   },
-  scrollContent: {
-    padding: 16,
-  },
-  header: {
+  title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#23C882',
     marginBottom: 20,
     textAlign: 'center',
+    color: '#28a745',
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
+  subtitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 12,
+    marginBottom: 10,
+    color: '#333',
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#ccc',
     borderRadius: 8,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    marginBottom: 10,
+    backgroundColor: '#fff',
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
+    shadowRadius: 5,
     elevation: 2,
   },
-  cardText: {
-    fontSize: 16,
-  },
-  cardNumber: {
+  cardTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#555',
+    marginBottom: 5,
   },
-  notification: {
+  buttons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    marginTop: 10,
   },
-  cardDetail: {
-    color: '#555',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#DDD',
-    backgroundColor: '#FFFFFF',
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navItemText: {
-    fontSize: 16,
-    color: '#23C882',
-    marginTop: 4,
+  noData: {
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#777',
   },
 });
+s
