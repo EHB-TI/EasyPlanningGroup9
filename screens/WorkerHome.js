@@ -145,14 +145,11 @@ export default function WorkerHome({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Header Section */}
-        <View style={styles.header}>
+        <View style={styles.headerAligned}>
+          <Text style={styles.greetingText}>Hallo {user.firstName}</Text>
           <TouchableOpacity style={styles.profileIcon} onPress={handleNavigateToAccount}>
             <Text style={styles.profileInitial}>{firstLetter}</Text>
           </TouchableOpacity>
-        </View>
-
-        <View style={styles.greetingSection}>
-          <Text style={styles.greetingText}>Hallo {user.firstName}</Text>
         </View>
 
         {/* Aantal Shifts Section */}
@@ -227,11 +224,12 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
   },
-  header: {
+  headerAligned: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+    marginTop: 10,
   },
   profileIcon: {
     width: 45,
@@ -245,11 +243,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
-  },
-  greetingSection: {
-    marginTop: 10,
-    marginBottom: 10,
-    alignItems: 'flex-start',
   },
   greetingText: {
     fontSize: 28,
@@ -348,6 +341,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+
+
+
 
 
 
