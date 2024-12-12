@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function WorkerMijnplanning({ navigation }) {
@@ -22,6 +22,27 @@ export default function WorkerMijnplanning({ navigation }) {
     setSelectedDay(day);
     console.log(`Day ${day} clicked`);
   };
+
+    const handleCancelShift = (shiftId) => {
+      Alert.alert(
+        'Annuler shift',
+        'Ben je zeker dat je deze shift wilt annuleren?',
+        [
+          {
+            text: 'Non',
+            style: 'cancel',
+          },
+          {
+            text: 'Oui',
+            onPress: () => {
+              console.log(`Shift avec l'ID ${shiftId} a été annulé.`);
+              // Ajouter ici la logique pour annuler le shift (mise à jour Firebase, etc.)
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    };
 
   return (
     <View style={styles.container}>
@@ -71,7 +92,38 @@ export default function WorkerMijnplanning({ navigation }) {
         </View>
       </View>
 
-      {/* Bottom Tab Navigation (Placeholder) */}
+
+
+      <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Geplande shifts</Text>
+                <View style={styles.plannedShift}>
+                  <View>
+                    <Text style={styles.plannedShiftDay}>Dinsdag</Text>
+                    <Text style={styles.plannedShiftDate}>26 november 2024</Text>
+                    <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => handleCancelShift('shiftId123')}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+      
+                <View style={styles.plannedShift}>
+                  <View>
+                    <Text style={styles.plannedShiftDay}>Woensdag</Text>
+                    <Text style={styles.plannedShiftDate}>27 november 2024</Text>
+                    <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => handleCancelShift('shiftId124')}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
       
     </View>
   );
@@ -100,6 +152,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
+    paddingBottom:0
   },
   calendarHeaderContainer: {
     flexDirection: "row",
@@ -153,5 +206,52 @@ const styles = StyleSheet.create({
   },
   selectedText: {
     color: "#FFFFFF",
+  },
+  section: {
+    marginBottom: 20,
+    marginHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    color: '#333',
+  },
+  plannedShift: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  plannedShiftDay: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  plannedShiftDate: {
+    fontSize: 14,
+    color: '#555',
+  },
+  plannedShiftTime: {
+    fontSize: 14,
+    color: '#555',
+  },
+  cancelButton: {
+    backgroundColor: '#FF5722',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
 });
