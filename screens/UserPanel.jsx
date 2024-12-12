@@ -11,69 +11,83 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+// Picker voor rollen / contracten
 import { Picker } from '@react-native-picker/picker';
+// Veilige weergave voor camera dat text er niet onder gaat
+import { SafeAreaView } from 'react-native-safe-area-context';
+// Firebase functies
 import { collection, getDocs, query, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 const AdminPanelScreen = () => {
-  const [loading, setLoading] = useState(true);
-  const [sections, setSections] = useState([]);
-  const [expandedSections, setExpandedSections] = useState({});
-  const [refreshing, setRefreshing] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [fixDay, setFixDay] = useState('');
-  const [role, setRole] = useState('');
-  const [contractType, setContractType] = useState('');
-  const [phone, setPhone] = useState('');
+  // State variabelen (laden, data, etc.)
+  const [loading, setLoading] = useState(true); // laden gebruikers
+  const [sections, setSections] = useState([]); // secties (pending, approved)
+  const [expandedSections, setExpandedSections] = useState({}); // ingeklapt/uitgeklapt secties
+  const [refreshing, setRefreshing] = useState(false); // verversen lijst
+  const [modalVisible, setModalVisible] = useState(false); // zichtbaarheid approve-modal
+  const [editModalVisible, setEditModalVisible] = useState(false); // zichtbaarheid edit-modal
+  const [selectedUser, setSelectedUser] = useState(null); // geselecteerde gebruiker
+  const [fixDay, setFixDay] = useState(''); // ingevoerde dagen
+  const [role, setRole] = useState(''); // geselecteerde rol
+  const [contractType, setContractType] = useState(''); // geselecteerd contracttype
+  const [phone, setPhone] = useState(''); // telefoonnummer invoer
 
-  const roleOptions = ['Manager', 'Worker', ''];
-  const contractOptions = ['CDI', 'CDD', 'Student', ''];
+  // Mogelijke rollen en contracten (keuzelijsten)
+  const roleOptions = ['Manager', 'Worker', '']; // rollen
+  const contractOptions = ['CDI', 'CDD', 'Student', '']; // contracten
 
-  // Allowed days (excluding Saturday if needed)
+  // Toegestane dagen (lowercase)
   const allowedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'sunday'];
-  const minDays = 1;
-  const maxDays = 5;
+  const minDays = 1; // minimum aantal dagen
+  const maxDays = 5; // maximum aantal dagen
 
   useEffect(() => {
+    // Laden van gebruikers data bij montage
     fetchUsers();
   }, []);
 
   const fetchUsers = async () => {
+    // Data uit Firestore halen
     try {
       setLoading(true);
+
+      // Query voor pending users
       const pendingUsersQuery = query(
         collection(db, 'users'),
         where('status', '==', 'pending')
       );
+
+      // Query voor approved users
       const approvedUsersQuery = query(
         collection(db, 'users'),
         where('status', '==', 'approved')
       );
 
+      // Uitvoeren queries
       const pendingSnapshot = await getDocs(pendingUsersQuery);
       const approvedSnapshot = await getDocs(approvedUsersQuery);
 
-      // Map pending users
+      // Pending users mappen
       const pendingUsers = pendingSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      // Map approved users
+      // Approved users mappen
       const approvedUsers = approvedSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
 
-      // Categorize approved users
+      // Categoriseren approved users op contract type
       const categorizedUsers = {
-        FixedTerm: approvedUsers.filter((user) => user.contract === 'CDI'),
-        Permanent: approvedUsers.filter((user) => user.contract === 'CDD'),
-        Student: approvedUsers.filter((user) => user.contract === 'Student'),
+        FixedTerm: approvedUsers.filter((user) => user.contract === 'CDI'),    // CDI
+        Permanent: approvedUsers.filter((user) => user.contract === 'CDD'),   // CDD
+        Student: approvedUsers.filter((user) => user.contract === 'Student'), // Student
       };
 
+      // Data in secties indelen
       const sectionsData = [
         {
           title: 'Pending Users',
@@ -93,9 +107,10 @@ const AdminPanelScreen = () => {
         },
       ];
 
+      // State zetten met de nieuwe data
       setSections(sectionsData);
 
-      // Initialize expanded state (default to expanded)
+      // Secties standaard uitklappen
       const initialExpandedState = {};
       sectionsData.forEach((section) => {
         initialExpandedState[section.title] = true;
@@ -104,80 +119,79 @@ const AdminPanelScreen = () => {
 
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Fout bij ophalen users:', error);
       setLoading(false);
     }
   };
 
   const onRefresh = async () => {
+    // Refresh-lijst
     setRefreshing(true);
     await fetchUsers();
     setRefreshing(false);
   };
 
   const toggleSection = (title) => {
+    // Uitklappen/inklapppen sectie
     setExpandedSections((prevState) => ({
       ...prevState,
       [title]: !prevState[title],
     }));
   };
 
-  
-  //fix dagen kiezen/wijzigen.
+  const normalizeDay = (dayString) => {
+    // Normaliseren dag (trim, lowercase)
+    const trimmed = dayString.trim();
+    const lower = trimmed.toLowerCase();
+    return { original: trimmed, normalized: lower };
+  };
 
-const normalizeDay = (dayString) => {
-  const trimmed = dayString.trim();
-  const lower = trimmed.toLowerCase();
-  return { original: trimmed, normalized: lower };
-};
+  const validateFixDay = () => {
+    // Validatie ingevoerde dagen
+    const parts = fixDay.split(',').map(p => p.trim()).filter(Boolean);
 
-const validateFixDay = () => {
-  const parts = fixDay.split(',').map(p => p.trim()).filter(Boolean);
+    const normalizedDays = [];
+    for (let p of parts) {
+      const { original, normalized } = normalizeDay(p);
 
-  const normalizedDays = [];
-  for (let p of parts) {
-    const { original, normalized } = normalizeDay(p);
+      // Check of dag toegestaan is
+      if (!allowedDays.includes(normalized)) {
+        Alert.alert(
+          'Invalid Day',
+          `De ingevoerde dag "${original}" wordt niet herkend.\n\nKies uit: ${allowedDays.join(', ')}`
+        );
+        return false;
+      }
 
-    // allowed days gebruiken 
-    if (!allowedDays.includes(normalized)) {
-      // dag bestaat niet
+      // Check of dag lowercase is
+      if (original !== normalized) {
+        Alert.alert(
+          'Incorrect Format',
+          `De ingevoerde dag "${original}" moet in lowercase. Gebruik "${normalized}".`
+        );
+        return false;
+      }
+
+      normalizedDays.push(normalized);
+    }
+
+    // Check min/max aantal dagen
+    const uniqueDays = Array.from(new Set(normalizedDays));
+    if (uniqueDays.length < minDays || uniqueDays.length > maxDays) {
       Alert.alert(
-        'Invalid Day',
-        `The entered day "${original}" is not recognized.\n\nPlease choose from: ${allowedDays.join(', ')}`
+        'Invalid Number of Days',
+        `Voer tussen ${minDays} en ${maxDays} verschillende toegestane dagen in.`
       );
       return false;
     }
 
-    //check lowercase.
-    if (original !== normalized) {
-      // moet lowercase zijn
-      Alert.alert(
-        'Incorrect Format',
-        `The entered day "${original}" should be in all lowercase. Please write it as "${normalized}".`
-      );
-      return false;
-    }
-
-    normalizedDays.push(normalized);
-  }
-
-  const uniqueDays = Array.from(new Set(normalizedDays));
-  if (uniqueDays.length < minDays || uniqueDays.length > maxDays) {
-    Alert.alert(
-      'Invalid Number of Days',
-      `Please enter between ${minDays} and ${maxDays} distinct allowed days.`
-    );
-    return false;
-  }
-
-  //oke
-  return true;
-};
-  
+    return true;
+  };
 
   const handleApprove = async () => {
+    // Gebruiker goedkeuren
     if (!fixDay || !role || !contractType || !phone) {
-      Alert.alert('Error', 'Please fill all fields.');
+      Alert.alert('Error', 'Vul alle velden in.');
       return;
     }
 
@@ -194,32 +208,33 @@ const validateFixDay = () => {
         phone,
       });
 
-      Alert.alert('Success', `${selectedUser.firstName} approved.`);
+      Alert.alert('Success', `${selectedUser.firstName} is goedgekeurd.`);
       setModalVisible(false);
       clearFormFields();
-      await fetchUsers(); // Refresh data after update
+      await fetchUsers(); // Data verversen
     } catch (error) {
-      console.error('Error approving user:', error);
+      console.error('Fout bij goedkeuren gebruiker:', error);
     }
   };
 
   const handleDeleteUser = async (user) => {
+    // Gebruiker verwijderen
     Alert.alert(
-      'Confirm Delete',
-      `Are you sure you want to delete ${user.firstName} ${user.lastName}?`,
+      'Bevestig Verwijderen',
+      `Weet je zeker dat je ${user.firstName} ${user.lastName} wilt verwijderen?`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Annuleer', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Verwijderen',
           style: 'destructive',
           onPress: async () => {
             try {
               const userRef = doc(db, 'users', user.id);
               await deleteDoc(userRef);
-              Alert.alert('Deleted', `${user.firstName} has been deleted.`);
-              await fetchUsers(); // Refresh data after deletion
+              Alert.alert('Verwijderd', `${user.firstName} is verwijderd.`);
+              await fetchUsers(); // Data vernieuwen
             } catch (error) {
-              console.error('Error deleting user:', error);
+              console.error('Fout bij verwijderen gebruiker:', error);
             }
           },
         },
@@ -228,6 +243,7 @@ const validateFixDay = () => {
   };
 
   const handleEditUser = (user) => {
+    // Modal openen om gebruiker aan te passen
     setSelectedUser(user);
     setFixDay(user.fixDay || '');
     setRole(user.role || '');
@@ -237,8 +253,9 @@ const validateFixDay = () => {
   };
 
   const handleUpdateUser = async () => {
+    // Gebruiker updaten
     if (!fixDay || !role || !contractType || !phone) {
-      Alert.alert('Error', 'Please fill all fields.');
+      Alert.alert('Error', 'Vul alle velden in.');
       return;
     }
 
@@ -252,16 +269,17 @@ const validateFixDay = () => {
         phone,
         fixDay,
       });
-      Alert.alert('Success', `${selectedUser.firstName} updated successfully.`);
+      Alert.alert('Success', `${selectedUser.firstName} is bijgewerkt.`);
       setEditModalVisible(false);
       clearFormFields();
       await fetchUsers();
     } catch (error) {
-      console.error('Error updating user:', error);
+      console.error('Fout bij updaten gebruiker:', error);
     }
   };
 
   const clearFormFields = () => {
+    //  leegmaken
     setFixDay('');
     setRole('');
     setContractType('');
@@ -270,7 +288,9 @@ const validateFixDay = () => {
   };
 
   const renderItem = ({ item, section }) => {
+    // Gebruiker rij renderen
     if (section.title === 'Pending Users') {
+      // Pending user weergave
       return (
         <View style={styles.pendingUserContainer}>
           <Text style={styles.pendingUserName}>
@@ -302,6 +322,7 @@ const validateFixDay = () => {
         </View>
       );
     } else {
+      // existing user weergave
       return (
         <View style={styles.userContainer}>
           <Text style={styles.userName}>
@@ -312,24 +333,29 @@ const validateFixDay = () => {
           <Text style={styles.userDetails}> {item.fixDay}</Text>
           <Text style={styles.userDetails}> {item.role}</Text>
           <Text style={styles.userDetails}> {item.contract}</Text>
-          <TouchableOpacity
-            style={[styles.originalApproveButton, { marginTop: 10 }]}
-            onPress={() => handleEditUser(item)}
-          >
-            <Text style={styles.buttonText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.originalRejectButton, { marginTop: 10 }]}
-            onPress={() => handleDeleteUser(item)}
-          >
-            <Text style={styles.buttonText}>Delete</Text>
-          </TouchableOpacity>
+
+          {/* delet en edit button */}
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={styles.originalApproveButton}
+              onPress={() => handleEditUser(item)}
+            >
+              <Text style={styles.buttonText}>Edit</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.originalRejectButton}
+              onPress={() => handleDeleteUser(item)}
+            >
+              <Text style={styles.buttonText}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     }
   };
 
   const renderSectionHeader = ({ section }) => (
+    // Sectie kop weergave met toggle
     <TouchableOpacity
       style={styles.sectionHeader}
       onPress={() => toggleSection(section.title)}
@@ -342,6 +368,7 @@ const validateFixDay = () => {
   );
 
   if (loading) {
+    // refresh
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#00BFA6" />
@@ -351,6 +378,10 @@ const validateFixDay = () => {
 
   return (
     <View style={styles.container}>
+      {/* Titel bovenaan */}
+      <Text style={styles.mainTitle}>User Panel</Text>
+
+      {/* Lijst van gebruikers in secties */}
       <SectionList
         sections={sections}
         keyExtractor={(item) => item.id}
@@ -366,11 +397,11 @@ const validateFixDay = () => {
 
       {/* Approve Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalInnerContainer}>
             <Text style={styles.modalTitle}>Approve User</Text>
             <TextInput
-              placeholder={`Fix Days (${minDays}-${maxDays} from ${allowedDays.join(', ')})`}
+              placeholder={`Fix Days (${minDays}-${maxDays} uit ${allowedDays.join(', ')})`}
               style={styles.input}
               value={fixDay}
               onChangeText={setFixDay}
@@ -422,17 +453,17 @@ const validateFixDay = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Edit Modal */}
       <Modal visible={editModalVisible} animationType="slide" transparent>
-        <View style={styles.modalContainer}>
+        <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalInnerContainer}>
             <Text style={styles.modalTitle}>Edit User</Text>
 
             <TextInput
-              placeholder={`Fix Days (${minDays}-${maxDays} from ${allowedDays.join(', ')})`}
+              placeholder={`Fix Days (${minDays}-${maxDays} uit ${allowedDays.join(', ')})`}
               style={styles.input}
               value={fixDay}
               onChangeText={setFixDay}
@@ -484,22 +515,30 @@ const validateFixDay = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   );
 };
 
+// Stijlen voor de componenten
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#f0f8ff', // lichte achtergrond
+  },
+  mainTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    margin: 15,
+    textAlign: 'center',
+    color: '#333', // titel tekstkleur
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f8f9fa', // sectie header achtergrond
     padding: 15,
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
@@ -507,7 +546,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#333', // sectie titel tekstkleur
   },
   toggleText: {
     fontSize: 18,
@@ -566,10 +605,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#555',
   },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
   modalContainer: {
     flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)', // halfdoorzichtige achtergrond
     padding: 20,
   },
   modalInnerContainer: {

@@ -1,11 +1,34 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
+// Import Firebase functions
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../firebaseConfig';
 
 export default function ManagerHome({ navigation }) {
+  //om te checken hvl pending users. op home page te plaatsen.
+  const [pendingCount, setPendingCount] = useState(0); 
+
   const handleNavigate = (screen) => {
-    navigation.navigate(screen); // Navigate to the specified screen
+    navigation.navigate(screen);
   };
+
+  useEffect(() => {
+  
+    //uithalen uit de db hoeveel pending users er zijn
+    const fetchPendingUsers = async () => {
+      try {
+        const q = query(collection(db, 'users'), where('status', '==', 'pending'));
+        const querySnapshot = await getDocs(q);
+        const count = querySnapshot.size; 
+        setPendingCount(count);
+      } catch (error) {
+        console.error('Error fetching pending users count:', error);
+      }
+    };
+
+    fetchPendingUsers();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -19,7 +42,8 @@ export default function ManagerHome({ navigation }) {
             onPress={() => handleNavigate('UserPanel')}
           >
             <Text style={styles.cardText}>Pending account validation</Text>
-            <Text style={styles.cardNumber}>10</Text>
+            {/* hier wordt pending users getoond */}
+            <Text style={styles.cardNumber}>{pendingCount}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.card}
