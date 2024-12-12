@@ -79,9 +79,9 @@ export default function ManagerHome({ navigation }) {
             <Text style={styles.cardText}>Manage shift request</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('AddWorkersScreen')}
-          >
+             style={styles.card}
+             onPress={() => navigation.navigate('AddWorkersNeededScreen')}
+           >
             <Text style={styles.cardText}>Add workers needed</Text>
           </TouchableOpacity>
         </View>
