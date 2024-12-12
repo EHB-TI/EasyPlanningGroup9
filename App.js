@@ -12,6 +12,7 @@ import ManageShiftRequestScreen from './screens/ManageShiftRequestScreen';
 import WorkerAccountDetails from './screens/WorkerAccountDetails'; // Import WorkerAccountDetails
 
 import AddWorkersNeededScreen from './screens/AddWorkersNeededScreen';
+import WorkerMijnplanning from './screens/WorkerMijnplanning';
 
 
 const Stack = createNativeStackNavigator();
@@ -39,7 +40,11 @@ export default function App() {
           component={WorkerAccountDetails}
           options={{ title: 'Account Details', headerShown: false }}
         />
-
+        <Stack.Screen
+          name="WorkerMijnplanning"
+          component={WorkerMijnplanning}
+          options={{ title: 'WorkerMijnplanning', headerShown: false }}
+        />
         <Stack.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} />
         
 
