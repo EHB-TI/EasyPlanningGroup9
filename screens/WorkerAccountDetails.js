@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+
  
 export default function AccountDetails({ navigation }) {
   const [user, setUser] = useState({
@@ -34,8 +36,8 @@ export default function AccountDetails({ navigation }) {
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerContainer}>
       <TouchableOpacity onPress={handleNavigateBack}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
+        <Ionicons name="arrow-back" size={24} color="#2D4535" />
+      </TouchableOpacity>
         <View>
           <Text style={styles.header}>Account Details</Text>
           <Text style={styles.subHeader}>Contract Type: soort type</Text>
@@ -111,6 +113,7 @@ export default function AccountDetails({ navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    
   );
 }
  
@@ -122,7 +125,7 @@ const styles = StyleSheet.create({
     
   },
   headerContainer: {
-    paddingTop: 20,
+    paddingTop: 50,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
