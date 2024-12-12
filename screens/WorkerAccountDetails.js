@@ -1,6 +1,6 @@
-import React, { useState } from "react"; 
+import React, { useState } from "react";
 import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
-
+ 
 export default function AccountDetails({ navigation }) {
   const [user, setUser] = useState({
     firstName: "Lucas",
@@ -11,21 +11,21 @@ export default function AccountDetails({ navigation }) {
     hours: "20"
   });
   const [isEditing, setIsEditing] = useState(false);
-
+ 
   const firstLetter = user.firstName.charAt(0).toUpperCase(); // Récupérer la première lettre en majuscule
-
+ 
   const handleNavigateToAccount = () => {
     navigation.navigate('WorkerAccountDetails', { user });
   };
-
+ 
   const handleEdit = () => {
     setIsEditing(!isEditing);
   };
-
+ 
   const handleChange = (field, value) => {
     setUser({ ...user, [field]: value });
   };
-
+ 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerContainer}>
@@ -37,7 +37,7 @@ export default function AccountDetails({ navigation }) {
           <Text style={styles.profileInitial}>{firstLetter}</Text>
         </TouchableOpacity>
       </View>
-
+ 
       <View style={styles.whitecontainer}>
         <View style={styles.inputContainer}>
           <Text style={[styles.label, isEditing && styles.editLabel]}>Voornaam:</Text>
@@ -48,7 +48,7 @@ export default function AccountDetails({ navigation }) {
             onChangeText={(text) => handleChange("firstName", text)}
           />
         </View>
-
+ 
         <View style={styles.inputContainer}>
           <Text style={[styles.label, isEditing && styles.editLabel]}>Achternaam:</Text>
           <TextInput
@@ -58,7 +58,7 @@ export default function AccountDetails({ navigation }) {
             onChangeText={(text) => handleChange("lastName", text)}
           />
         </View>
-
+ 
         <View style={styles.inputContainer}>
           <Text style={[styles.label, isEditing && styles.editLabel]}>GSM:</Text>
           <TextInput
@@ -68,7 +68,7 @@ export default function AccountDetails({ navigation }) {
             onChangeText={(text) => handleChange("phone", text)}
           />
         </View>
-
+ 
         <View style={styles.inputContainer}>
           <Text style={[styles.label, isEditing && styles.editLabel]}>E-mail:</Text>
           <TextInput
@@ -78,7 +78,7 @@ export default function AccountDetails({ navigation }) {
             onChangeText={(text) => handleChange("email", text)}
           />
         </View>
-
+ 
         <View style={styles.inputContainer}>
           <Text style={[styles.label, isEditing && styles.editLabel]}>Vaste Dagen:</Text>
           <TextInput
@@ -88,7 +88,7 @@ export default function AccountDetails({ navigation }) {
             onChangeText={(text) => handleChange("fixedDays", text)}
           />
         </View>
-
+ 
         <View style={styles.inputContainer}>
           <Text style={[styles.label, isEditing && styles.editLabel]}>Aantal uren:</Text>
           <TextInput
@@ -98,7 +98,7 @@ export default function AccountDetails({ navigation }) {
             onChangeText={(text) => handleChange("hours", text)}
           />
         </View>
-
+ 
         <TouchableOpacity style={styles.button} onPress={handleEdit}>
           <Text style={styles.buttonText}>{isEditing ? "Accepteren" : "Wijzig gegevens"}</Text>
         </TouchableOpacity>
@@ -106,7 +106,7 @@ export default function AccountDetails({ navigation }) {
     </ScrollView>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 5,
         color: "#999999",
-
+ 
   },
   editLabel: {
     color: "#505050",
