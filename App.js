@@ -41,7 +41,7 @@ export default function App() {
         />
 
         <Stack.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} />
-        <Stack.Screen name="UserPanel" component={UserPanel} />
+        
 
       </Stack.Navigator>
     </NavigationContainer>
