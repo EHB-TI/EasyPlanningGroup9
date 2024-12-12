@@ -17,7 +17,11 @@ export default function AccountDetails({ navigation }) {
   const handleNavigateToAccount = () => {
     navigation.navigate('WorkerAccountDetails', { user });
   };
- 
+
+  const handleNavigateBack = () => {
+    navigation.navigate('WorkerHome');
+  };
+
   const handleEdit = () => {
     setIsEditing(!isEditing);
   };
@@ -29,6 +33,9 @@ export default function AccountDetails({ navigation }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerContainer}>
+      <TouchableOpacity onPress={handleNavigateBack}>
+          <Text style={styles.backArrow}>←</Text>
+        </TouchableOpacity>
         <View>
           <Text style={styles.header}>Account Details</Text>
           <Text style={styles.subHeader}>Contract Type: soort type</Text>
@@ -112,12 +119,15 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     backgroundColor: "#E5F3F6",
+    
   },
   headerContainer: {
+    paddingTop: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
+    
   },
   header: {
     fontSize: 24,
@@ -146,6 +156,11 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: "#F6F6F6",
     padding: 5,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   label: {
     fontSize: 16,
@@ -176,5 +191,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 30,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
