@@ -134,6 +134,10 @@ export default function WorkerHome({ navigation }) {
     );
   };
 
+  const plannedShiftsCount = shifts.filter(
+    (shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid
+  ).length;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -142,10 +146,29 @@ export default function WorkerHome({ navigation }) {
       >
         {/* Header Section */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Hallo {user.firstName}</Text>
           <TouchableOpacity style={styles.profileIcon} onPress={handleNavigateToAccount}>
             <Text style={styles.profileInitial}>{firstLetter}</Text>
           </TouchableOpacity>
+        </View>
+
+        <View style={styles.greetingSection}>
+          <Text style={styles.greetingText}>Hallo {user.firstName}</Text>
+        </View>
+
+        {/* Aantal Shifts Section */}
+        <View style={styles.aantalShiftsSection}>
+          <Text style={styles.aantalShiftsTitle}>Aantal shifts</Text>
+          <Text style={styles.aantalShiftsCount}>{plannedShiftsCount}</Text>
+        </View>
+
+        <View style={styles.nextShiftSection}>
+          <Text style={styles.nextShiftTitle}>Volgende shift</Text>
+          {shifts.length > 0 && (
+            <View style={styles.nextShiftBox}>
+              <Text style={styles.nextShiftDetails}>Datum: {new Date(shifts[0].date.seconds * 1000).toLocaleDateString('nl-NL')}</Text>
+              <Text style={styles.nextShiftDetails}>Start: {new Date(shifts[0].date.seconds * 1000).toLocaleTimeString('nl-NL')}</Text>
+            </View>
+          )}
         </View>
 
         {/* Planned Shifts Section */}
@@ -206,27 +229,76 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
     marginBottom: 20,
   },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
   profileIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitial: {
     color: '#FFFFFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  greetingSection: {
+    marginTop: 10,
+    marginBottom: 10,
+    alignItems: 'flex-start',
+  },
+  greetingText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  aantalShiftsSection: {
+    backgroundColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  aantalShiftsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  aantalShiftsCount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  nextShiftSection: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextShiftTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    marginBottom: 8,
+  },
+  nextShiftBox: {
+    marginBottom: 8,
+  },
+  nextShiftDetails: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   section: {
     marginBottom: 20,
@@ -276,4 +348,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+
+
+
+
+
+
+
 
