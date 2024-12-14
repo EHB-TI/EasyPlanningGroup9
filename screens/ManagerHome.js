@@ -5,6 +5,9 @@ import { Entypo } from '@expo/vector-icons';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
+
+
+
 export default function ManagerHome({ navigation }) {
   //om te checken hvl pending users. op home page te plaatsen.
   const [pendingCount, setPendingCount] = useState(0); 
