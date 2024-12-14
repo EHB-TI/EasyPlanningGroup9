@@ -34,7 +34,7 @@ const AdminPanelScreen = () => {
   const [phone, setPhone] = useState(''); // telefoonnummer invoer
 
   // Mogelijke rollen en contracten (keuzelijsten)
-  const roleOptions = ['Manager', 'Worker', '']; // rollen
+  const roleOptions = ['manager', 'worker', '']; // rollen
   const contractOptions = ['CDI', 'CDD', 'Student', '']; // contracten
 
   // Toegestane dagen (lowercase)
