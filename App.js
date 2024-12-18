@@ -26,12 +26,12 @@ function WorkerTabs() {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
 
-          if (route.name === 'WorkerHome') {
+          if (route.name === 'home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'WorkerMijnplanning') {
+          } else if (route.name === 'mijnplanning') {
             iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'WorkerSettings') {
-            iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'meer') {
+            iconName = focused ? 'settings' : 'settings-outline';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -44,9 +44,9 @@ function WorkerTabs() {
         },
       })}
     >
-      <Tab.Screen name="WorkerHome" component={WorkerHome} options={{ headerShown: false }} />
-      <Tab.Screen name="WorkerMijnplanning" component={WorkerMijnplanning} options={{ headerShown: false }} />
-      <Tab.Screen name="WorkerSettings" component={WorkerSettings} options={{ headerShown: false }} />
+      <Tab.Screen name="home" component={WorkerHome} options={{ headerShown: false }} />
+      <Tab.Screen name="mijnplanning" component={WorkerMijnplanning} options={{ headerShown: false }} />
+      <Tab.Screen name="meer" component={WorkerSettings} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
 }
