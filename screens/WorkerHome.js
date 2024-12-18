@@ -186,31 +186,6 @@ export default function WorkerHome({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Pending Shifts Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shifts in Afwachting</Text>
-          {shifts
-            .filter((shift) => shift.status === 'pending' && shift.reservedBy === currentUser?.uid)
-            .map((shift) => (
-              <View key={shift.id} style={styles.pendingShift}>
-                <View>
-                  <Text style={styles.pendingShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
-                  <Text style={styles.pendingShiftDate}>
-                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
-                  </Text>
-                  <Text style={styles.pendingShiftTime}>
-                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.cancelPendingButton}
-                  onPress={() => handleCancelPendingShift(shift.id)}
-                >
-                  <Text style={styles.cancelPendingButtonText}>Annuleren</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-        </View>
 
         <View style={styles.volgendeShiftSection}>
   <Text style={styles.volgendeShiftTitle}>Volgende shift</Text>
@@ -243,6 +218,32 @@ export default function WorkerHome({ navigation }) {
         <View style={styles.aantalShiftsSection}>
           <Text style={styles.aantalShiftsTitle}>Aantal shifts</Text>
           <Text style={styles.aantalShiftsCount}>{plannedShiftsCount}</Text>
+        </View>
+
+        {/* Pending Shifts Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Shifts in Afwachting</Text>
+          {shifts
+            .filter((shift) => shift.status === 'pending' && shift.reservedBy === currentUser?.uid)
+            .map((shift) => (
+              <View key={shift.id} style={styles.pendingShift}>
+                <View>
+                  <Text style={styles.pendingShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
+                  <Text style={styles.pendingShiftDate}>
+                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  </Text>
+                  <Text style={styles.pendingShiftTime}>
+                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.cancelPendingButton}
+                  onPress={() => handleCancelPendingShift(shift.id)}
+                >
+                  <Text style={styles.cancelPendingButtonText}>Annuleren</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
         </View>
         
 
