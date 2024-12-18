@@ -107,7 +107,37 @@ export default function WorkerHome({ navigation }) {
     );
   };
 
-  // Reserve a shift
+  // Cancel a pending shift
+  const handleCancelPendingShift = async (shiftId) => {
+    Alert.alert(
+      'Aanvraag annuleren',
+      'Weet je zeker dat je deze aanvraag wilt annuleren?',
+      [
+        {
+          text: 'Nee',
+          style: 'cancel',
+        },
+        {
+          text: 'Ja',
+          onPress: async () => {
+            try {
+              const shiftRef = doc(db, 'shifts', shiftId);
+              await updateDoc(shiftRef, {
+                status: 'available',
+                reservedBy: null, // Reset the reservedBy field
+              });
+              Alert.alert('Success', 'De aanvraag is geannuleerd.');
+            } catch (error) {
+              console.error('Fout bij het annuleren van de aanvraag:', error);
+              Alert.alert('Error', 'Er ging iets mis bij het annuleren van de aanvraag.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const handleReserveShift = async (shiftId) => {
     Alert.alert(
       'Shift reserveren',
@@ -121,17 +151,15 @@ export default function WorkerHome({ navigation }) {
           text: 'Ja',
           onPress: async () => {
             try {
-              // Ajouter une demande dans Applications
-              await addDoc(collection(db, 'Applications'), {
-                worker_id: userId, // ID du worker
-                shift_id: shiftId, // ID du shift
-                application_date: Timestamp.now(),
-                status: 'applied', // État initial de la demande
+              const shiftRef = doc(db, 'shifts', shiftId);
+              await updateDoc(shiftRef, {
+                status: 'pending', // Set the status to "pending"
+                reservedBy: currentUser.uid, // Save the user who reserved it
               });
-              Alert.alert('Success', 'Shift aanvraag is ingediend!');
+              Alert.alert('Success', 'Shift is nu in afwachting van goedkeuring.');
             } catch (error) {
-              console.error('Fout bij het indienen van de aanvraag:', error);
-              Alert.alert('Error', 'Er ging iets mis bij het indienen van de aanvraag.');
+              console.error('Fout bij het reserveren van de shift:', error);
+              Alert.alert('Error', 'Er ging iets mis bij het reserveren van de shift.');
             }
           },
         },
@@ -158,20 +186,36 @@ export default function WorkerHome({ navigation }) {
           </TouchableOpacity>
         </View>
 
+        {/* Pending Shifts Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Shifts in Afwachting</Text>
+          {shifts
+            .filter((shift) => shift.status === 'pending' && shift.reservedBy === currentUser?.uid)
+            .map((shift) => (
+              <View key={shift.id} style={styles.pendingShift}>
+                <View>
+                  <Text style={styles.pendingShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
+                  <Text style={styles.pendingShiftDate}>
+                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  </Text>
+                  <Text style={styles.pendingShiftTime}>
+                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.cancelPendingButton}
+                  onPress={() => handleCancelPendingShift(shift.id)}
+                >
+                  <Text style={styles.cancelPendingButtonText}>Annuleren</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+        </View>
+
         {/* Aantal Shifts Section */}
         <View style={styles.aantalShiftsSection}>
           <Text style={styles.aantalShiftsTitle}>Aantal shifts</Text>
           <Text style={styles.aantalShiftsCount}>{plannedShiftsCount}</Text>
-        </View>
-
-        <View style={styles.nextShiftSection}>
-          <Text style={styles.nextShiftTitle}>Volgende shift</Text>
-          {shifts.length > 0 && (
-            <View style={styles.nextShiftBox}>
-              <Text style={styles.nextShiftDetails}>Datum: {new Date(shifts[0].date.seconds * 1000).toLocaleDateString('nl-NL')}</Text>
-              <Text style={styles.nextShiftDetails}>Start: {new Date(shifts[0].date.seconds * 1000).toLocaleTimeString('nl-NL')}</Text>
-            </View>
-          )}
         </View>
 
         {/* Planned Shifts Section */}
@@ -183,8 +227,12 @@ export default function WorkerHome({ navigation }) {
               <View key={shift.id} style={styles.plannedShift}>
                 <View>
                   <Text style={styles.plannedShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
-                  <Text style={styles.plannedShiftDate}>{new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}</Text>
-                  <Text style={styles.plannedShiftTime}>Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}</Text>
+                  <Text style={styles.plannedShiftDate}>
+                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  </Text>
+                  <Text style={styles.plannedShiftTime}>
+                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.cancelButton}
@@ -205,8 +253,12 @@ export default function WorkerHome({ navigation }) {
               <View key={shift.id} style={styles.freeShift}>
                 <View>
                   <Text style={styles.freeShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
-                  <Text style={styles.freeShiftDate}>{new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}</Text>
-                  <Text style={styles.freeShiftTime}>Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}</Text>
+                  <Text style={styles.freeShiftDate}>
+                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  </Text>
+                  <Text style={styles.freeShiftTime}>
+                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.reserveButton}
@@ -279,26 +331,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  nextShiftSection: {
-    marginBottom: 20,
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nextShiftTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  nextShiftBox: {
-    marginBottom: 8,
-  },
-  nextShiftDetails: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
   section: {
     marginBottom: 20,
   },
@@ -307,6 +339,25 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 12,
     color: '#333',
+  },
+  pendingShift: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFF9C4',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+  cancelPendingButton: {
+    backgroundColor: '#FF5722',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  cancelPendingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
   plannedShift: {
     flexDirection: 'row',
@@ -347,6 +398,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+
+
 
 
 
