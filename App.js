@@ -29,6 +29,8 @@ export default function App() {
           component={WorkerHome}
           options={{ title: 'Dashboard', headerShown: false }}
         />
+        
+        
         <Stack.Screen name="ManagerHome" component={ManagerHome} />
         <Stack.Screen name="ManageShiftRequestScreen" component={ManageShiftRequestScreen} />
 

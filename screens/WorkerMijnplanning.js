@@ -1,48 +1,86 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function WorkerMijnplanning({ navigation }) {
-  const [selectedDay, setSelectedDay] = useState(3); // Example selected day
+  const [selectedDay, setSelectedDay] = useState(null); // Jour sélectionné
+  const [currentMonth, setCurrentMonth] = useState(11); // Novembre (index 0 = Janvier)
+  const [currentYear, setCurrentYear] = useState(2024);
 
   const daysOfWeek = ["ma", "di", "wo", "do", "vr", "za", "zo"];
-  const daysInMonth = [
-    { day: 25, isGray: true }, { day: 26, isGray: true }, { day: 27, isGray: true },
-    { day: 28, isGray: true }, { day: 29, isGray: true }, { day: 30, isGray: true },
-    { day: 1 }, { day: 2 }, { day: 3, isSelected: true }, { day: 4 }, { day: 5 },
-    { day: 6 }, { day: 7 }, { day: 8 }, { day: 9 }, { day: 10 }, { day: 11 },
-    { day: 12 }, { day: 13 }, { day: 14 }, { day: 15 }, { day: 16 }, { day: 17 },
-    { day: 18 }, { day: 19 }, { day: 20 }, { day: 21 }, { day: 22 }, { day: 23 },
-    { day: 24 }, { day: 25 }, { day: 26 }, { day: 27 }, { day: 28 }, { day: 29 },
-    { day: 30 }, { day: 31 }, { day: 1, isGray: true }, { day: 2, isGray: true },
-    { day: 3, isGray: true }, { day: 4, isGray: true }, { day: 5, isGray: true },
-  ];
 
-  const handleDayClick = (day) => {
-    setSelectedDay(day);
-    console.log(`Day ${day} clicked`);
+  const generateDaysInMonth = (month, year) => {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay();
+    const lastDayPrevMonth = new Date(year, month, 0).getDate();
+
+    const days = [];
+    for (let i = 0; i < (firstDayIndex === 0 ? 6 : firstDayIndex - 1); i++) {
+      days.push({ day: lastDayPrevMonth - (firstDayIndex === 0 ? 6 : firstDayIndex - 1) + i, isGray: true });
+    }
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({ day: i });
+    }
+    const remainingDays = 7 - (days.length % 7);
+    for (let i = 1; i <= (remainingDays === 7 ? 0 : remainingDays); i++) {
+      days.push({ day: i, isGray: true });
+    }
+    return days;
   };
 
-    const handleCancelShift = (shiftId) => {
-      Alert.alert(
-        'Annuler shift',
-        'Ben je zeker dat je deze shift wilt annuleren?',
-        [
-          {
-            text: 'Non',
-            style: 'cancel',
-          },
-          {
-            text: 'Oui',
-            onPress: () => {
-              console.log(`Shift avec l'ID ${shiftId} a été annulé.`);
-              // Ajouter ici la logique pour annuler le shift (mise à jour Firebase, etc.)
-            },
-          },
-        ],
-        { cancelable: true }
-      );
-    };
+  const daysInMonth = generateDaysInMonth(currentMonth, currentYear);
+
+  const handleDayClick = (day) => {
+    if (!day.isGray) {
+      setSelectedDay(day.day);
+      console.log(`Day ${day.day} clicked`);
+    }
+  };
+
+  const changeMonth = (direction) => {
+    if (direction === "prev") {
+      if (currentMonth === 0) {
+        setCurrentMonth(11);
+        setCurrentYear(currentYear - 1);
+      } else {
+        setCurrentMonth(currentMonth - 1);
+      }
+    } else if (direction === "next") {
+      if (currentMonth === 11) {
+        setCurrentMonth(0);
+        setCurrentYear(currentYear + 1);
+      } else {
+        setCurrentMonth(currentMonth + 1);
+      }
+    }
+  };
+
+  const handleCancelShift = (shiftId) => {
+    Alert.alert(
+      "Annuler shift",
+      "Ben je zeker dat je deze shift wilt annuleren?",
+      [
+        { text: "Non", style: "cancel" },
+        { text: "Oui", onPress: () => console.log(`Shift avec l'ID ${shiftId} a été annulé.`) },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  const monthNames = [
+    "Janvier",
+    "Février",
+    "Mars",
+    "Avril",
+    "Mai",
+    "Juin",
+    "Juillet",
+    "Août",
+    "Septembre",
+    "Octobre",
+    "Novembre",
+    "Décembre",
+  ];
 
   return (
     <View style={styles.container}>
@@ -58,13 +96,21 @@ export default function WorkerMijnplanning({ navigation }) {
       {/* Calendar */}
       <View style={styles.calendarContainer}>
         <View style={styles.calendarHeaderContainer}>
-          <Ionicons name="chevron-back" size={24} color="#2D4535" />
-          <Text style={styles.calendarHeader}>December 2024</Text>
-          <Ionicons name="chevron-forward" size={24} color="#2D4535" />
+          <TouchableOpacity onPress={() => changeMonth("prev")}>
+            <Ionicons name="chevron-back" size={24} color="#2D4535" />
+          </TouchableOpacity>
+          <Text style={styles.calendarHeader}>
+            {monthNames[currentMonth]} {currentYear}
+          </Text>
+          <TouchableOpacity onPress={() => changeMonth("next")}>
+            <Ionicons name="chevron-forward" size={24} color="#2D4535" />
+          </TouchableOpacity>
         </View>
         <View style={styles.daysOfWeekContainer}>
           {daysOfWeek.map((day, index) => (
-            <Text key={index} style={styles.dayOfWeekText}>{day}</Text>
+            <Text key={index} style={styles.dayOfWeekText}>
+              {day}
+            </Text>
           ))}
         </View>
         <View style={styles.daysContainer}>
@@ -74,15 +120,15 @@ export default function WorkerMijnplanning({ navigation }) {
               style={[
                 styles.day,
                 item.isGray && styles.grayDay,
-                item.day === selectedDay && styles.selectedDay,
+                item.day === selectedDay && !item.isGray && styles.selectedDay,
               ]}
-              onPress={() => handleDayClick(item.day)}
+              onPress={() => handleDayClick(item)}
             >
               <Text
                 style={[
                   styles.dayText,
                   item.isGray && styles.grayText,
-                  item.day === selectedDay && styles.selectedText,
+                  item.day === selectedDay && !item.isGray && styles.selectedText,
                 ]}
               >
                 {item.day}
@@ -92,39 +138,36 @@ export default function WorkerMijnplanning({ navigation }) {
         </View>
       </View>
 
-
-
+      {/* Planned Shifts */}
       <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Geplande shifts</Text>
-                <View style={styles.plannedShift}>
-                  <View>
-                    <Text style={styles.plannedShiftDay}>Dinsdag</Text>
-                    <Text style={styles.plannedShiftDate}>26 november 2024</Text>
-                    <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={() => handleCancelShift('shiftId123')}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-      
-                <View style={styles.plannedShift}>
-                  <View>
-                    <Text style={styles.plannedShiftDay}>Woensdag</Text>
-                    <Text style={styles.plannedShiftDate}>27 november 2024</Text>
-                    <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.cancelButton}
-                    onPress={() => handleCancelShift('shiftId124')}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-      
+        <Text style={styles.sectionTitle}>Geplande shifts</Text>
+        <View style={styles.plannedShift}>
+          <View>
+            <Text style={styles.plannedShiftDay}>Dinsdag</Text>
+            <Text style={styles.plannedShiftDate}>26 novembre 2024</Text>
+            <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => handleCancelShift("shiftId123")}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.plannedShift}>
+          <View>
+            <Text style={styles.plannedShiftDay}>Woensdag</Text>
+            <Text style={styles.plannedShiftDate}>27 novembre 2024</Text>
+            <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.cancelButton}
+            onPress={() => handleCancelShift("shiftId124")}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
@@ -135,7 +178,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5F3F6",
   },
   headerContainer: {
-    paddingTop:50,
+    paddingTop: 50,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -152,7 +195,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
-    paddingBottom:0
+    paddingBottom: 0
   },
   calendarHeaderContainer: {
     flexDirection: "row",
@@ -213,45 +256,40 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 12,
-    color: '#333',
+    color: "#333",
   },
   plannedShift: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
   },
   plannedShiftDay: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   plannedShiftDate: {
     fontSize: 14,
-    color: '#555',
+    color: "#555",
   },
   plannedShiftTime: {
     fontSize: 14,
-    color: '#555',
+    color: "#555",
   },
   cancelButton: {
-    backgroundColor: '#FF5722',
+    backgroundColor: "#FF5722",
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
   cancelButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
   },
 });
