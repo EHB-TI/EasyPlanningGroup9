@@ -110,29 +110,7 @@ export default function ManagerHome({ navigation }) {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('HomeScreen')}
-        >
-          <Entypo name="home" size={24} color="black" />
-          <Text style={styles.navItemText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('CalendarScreen')}
-        >
-          <Entypo name="calendar" size={24} color="black" />
-          <Text style={styles.navItemText}>Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('MoreScreen')}
-        >
-          <Entypo name="dots-three-horizontal" size={24} color="black" />
-          <Text style={styles.navItemText}>More</Text>
-        </TouchableOpacity>
-      </View>
+      
     </View>
   );
 }
