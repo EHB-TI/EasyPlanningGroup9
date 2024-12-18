@@ -217,6 +217,7 @@ export default function WorkerHome({ navigation }) {
           <Text style={styles.aantalShiftsTitle}>Aantal shifts</Text>
           <Text style={styles.aantalShiftsCount}>{plannedShiftsCount}</Text>
         </View>
+        
 
         {/* Planned Shifts Section */}
         <View style={styles.section}>
@@ -309,16 +310,11 @@ const styles = StyleSheet.create({
   },
   aantalShiftsSection: {
     backgroundColor: '#4CAF50',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
+    width: '45%',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginBottom: 10,
   },
   aantalShiftsTitle: {
     fontSize: 16,
