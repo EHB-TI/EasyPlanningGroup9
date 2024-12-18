@@ -186,12 +186,40 @@ export default function WorkerHome({ navigation }) {
             <Text style={styles.profileInitial}>{firstLetter}</Text>
           </TouchableOpacity>
         </View>
+
+
+        <View style={styles.volgendeShiftSection}>
+  <Text style={styles.volgendeShiftTitle}>Volgende shift</Text>
+  {shifts
+    .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
+    .sort((a, b) => a.date.seconds - b.date.seconds)[0] ? (
+    <>
+      <Text style={styles.volgendeShiftText}>
+        {new Date(
+          shifts
+            .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
+            .sort((a, b) => a.date.seconds - b.date.seconds)[0].date.seconds * 1000
+        ).toLocaleDateString('nl-NL')}
+      </Text>
+      <Text style={styles.volgendeShiftText}>
+        Start:{" "}
+        {new Date(
+          shifts
+            .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
+            .sort((a, b) => a.date.seconds - b.date.seconds)[0].date.seconds * 1000
+        ).toLocaleTimeString('nl-NL')}
+      </Text>
+    </>
+  ) : (
+    <Text style={styles.volgendeShiftText}>Geen geplande shift</Text>
+  )}
+</View>
+
         {/* Aantal Shifts Section */}
         <View style={styles.aantalShiftsSection}>
           <Text style={styles.aantalShiftsTitle}>Aantal shifts</Text>
           <Text style={styles.aantalShiftsCount}>{plannedShiftsCount}</Text>
         </View>
-
 
         {/* Pending Shifts Section */}
         <View style={styles.section}>
@@ -218,6 +246,7 @@ export default function WorkerHome({ navigation }) {
               </View>
             ))}
         </View>
+        
 
         {/* Planned Shifts Section */}
         <View style={styles.section}>
@@ -300,38 +329,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#4CAF50',
   },
-  volgendeShiftSection: {
-    backgroundColor: '#FFFFFF',
+  aantalShiftsSection: {
+    backgroundColor: '#4CAF50',
     padding: 16,
     borderRadius: 12,
-    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
-  },
-  volgendeShiftTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
-  },
-  volgendeShiftText: {
-    fontSize: 14,
-    color: '#333',
-    textAlign: 'center',
-  },
-  
-  aantalShiftsSection: {
-    backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 12,
-    width: '45%',
-    alignItems: 'center',
-    marginBottom: 10,
   },
   aantalShiftsTitle: {
     fontSize: 16,
@@ -346,6 +355,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 20,
+    
   },
   sectionTitle: {
     fontSize: 18,
@@ -361,6 +371,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cancelPendingButton: {
     backgroundColor: '#FF5722',
@@ -380,6 +395,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cancelButton: {
     backgroundColor: '#FF5722',
@@ -399,6 +419,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   reserveButton: {
     backgroundColor: '#4CAF50',

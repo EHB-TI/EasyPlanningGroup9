@@ -175,7 +175,7 @@ export default function WorkerMijnplanning({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#E5F3F6",
+    backgroundColor: "#F5F5F5",
   },
   headerContainer: {
     paddingTop: 50,
@@ -195,7 +195,12 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
-    paddingBottom: 0
+    paddingBottom: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   calendarHeaderContainer: {
     flexDirection: "row",
@@ -268,6 +273,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   plannedShiftDay: {
     fontSize: 16,
