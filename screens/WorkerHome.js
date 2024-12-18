@@ -121,11 +121,17 @@ export default function WorkerHome({ navigation }) {
           text: 'Ja',
           onPress: async () => {
             try {
-              const shiftRef = doc(db, 'shifts', shiftId);
-              await updateDoc(shiftRef, { status: 'reserved', reservedBy: currentUser.uid });
-              console.log(`Shift met ID ${shiftId} is gereserveerd.`);
+              // Ajouter une demande dans Applications
+              await addDoc(collection(db, 'Applications'), {
+                worker_id: userId, // ID du worker
+                shift_id: shiftId, // ID du shift
+                application_date: Timestamp.now(),
+                status: 'applied', // État initial de la demande
+              });
+              Alert.alert('Success', 'Shift aanvraag is ingediend!');
             } catch (error) {
-              console.error('Fout bij het reserveren van de shift:', error);
+              console.error('Fout bij het indienen van de aanvraag:', error);
+              Alert.alert('Error', 'Er ging iets mis bij het indienen van de aanvraag.');
             }
           },
         },
