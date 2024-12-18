@@ -1,12 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 
-
 export default function WorkerHome({ navigation, route }) {
   // Simuler des données utilisateur
   const { user } = route.params || { user: { firstName: 'Student', lastName: 'Example' } };
   const firstLetter = user.firstName.charAt(0).toUpperCase(); // Récupérer la première lettre en majuscule
-
 
   // Gestion de la navigation vers la page de détails du compte
   const handleNavigateToAccount = () => {
@@ -14,21 +12,26 @@ export default function WorkerHome({ navigation, route }) {
   };
 
 
-  // Confirmation d'annulation de shift
-  const handleCancelShift = (shiftId) => {
+  // Cancel a shift
+  const handleCancelShift = async (shiftId) => {
     Alert.alert(
-      'Annuler shift',
-      'Ben je zeker dat je deze shift wilt annuleren?',
+      'Shift annuleren',
+      'Weet je zeker dat je deze shift wilt annuleren?',
       [
         {
-          text: 'Non',
+          text: 'Nee',
           style: 'cancel',
         },
         {
-          text: 'Oui',
-          onPress: () => {
-            console.log(`Shift avec l'ID ${shiftId} a été annulé.`);
-            // Ajouter ici la logique pour annuler le shift (mise à jour Firebase, etc.)
+          text: 'Ja',
+          onPress: async () => {
+            try {
+              const shiftRef = doc(db, 'shifts', shiftId);
+              await updateDoc(shiftRef, { status: 'cancelled' });
+              console.log(`Shift met ID ${shiftId} is geannuleerd.`);
+            } catch (error) {
+              console.error('Fout bij het annuleren van de shift:', error);
+            }
           },
         },
       ],
@@ -37,8 +40,8 @@ export default function WorkerHome({ navigation, route }) {
   };
 
 
-  // Confirmation de réservation de shift
-  const handleReserveShift = (shiftId) => {
+  // Reserve a shift
+  const handleReserveShift = async (shiftId) => {
     Alert.alert(
       'Shift reserveren',
       'Wil je deze shift reserveren?',
@@ -49,9 +52,14 @@ export default function WorkerHome({ navigation, route }) {
         },
         {
           text: 'Ja',
-          onPress: () => {
-            console.log(`Shift met ID ${shiftId} is gereserveerd.`);
-            // Ajouter ici la logique pour réserver le shift (mise à jour Firebase, etc.)
+          onPress: async () => {
+            try {
+              const shiftRef = doc(db, 'shifts', shiftId);
+              await updateDoc(shiftRef, { status: 'reserved', reservedBy: currentUser.uid });
+              console.log(`Shift met ID ${shiftId} is gereserveerd.`);
+            } catch (error) {
+              console.error('Fout bij het reserveren van de shift:', error);
+            }
           },
         },
       ],
@@ -59,32 +67,40 @@ export default function WorkerHome({ navigation, route }) {
     );
   };
 
+  const plannedShiftsCount = shifts.filter(
+    (shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid
+  ).length;
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         {/* Header Section */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Hallo {user.firstName}</Text>
+        <View style={styles.headerAligned}>
+          <Text style={styles.greetingText}>Hallo {user.firstName}</Text>
           <TouchableOpacity style={styles.profileIcon} onPress={handleNavigateToAccount}>
             <Text style={styles.profileInitial}>{firstLetter}</Text>
           </TouchableOpacity>
         </View>
 
 
-        {/* Shift Counter Section */}
-        <View style={styles.shiftCounter}>
-          <Text style={styles.shiftCounterText}>Aantal shifts</Text>
-          <Text style={styles.shiftCounterNumber}>2 shifts</Text>
+        {/* Aantal Shifts Section */}
+        <View style={styles.aantalShiftsSection}>
+          <Text style={styles.aantalShiftsTitle}>Aantal shifts</Text>
+          <Text style={styles.aantalShiftsCount}>{plannedShiftsCount}</Text>
         </View>
 
 
-        {/* Next Shift Section */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Volgende shift</Text>
-          <Text style={styles.cardText}>26/11/2024</Text>
-          <Text style={styles.cardText}>8:30 tot 16:00</Text>
-          <Text style={styles.cardText}>duur 7h30</Text>
+        <View style={styles.nextShiftSection}>
+          <Text style={styles.nextShiftTitle}>Volgende shift</Text>
+          {shifts.length > 0 && (
+            <View style={styles.nextShiftBox}>
+              <Text style={styles.nextShiftDetails}>Datum: {new Date(shifts[0].date.seconds * 1000).toLocaleDateString('nl-NL')}</Text>
+              <Text style={styles.nextShiftDetails}>Start: {new Date(shifts[0].date.seconds * 1000).toLocaleTimeString('nl-NL')}</Text>
+            </View>
+          )}
         </View>
 
 
@@ -104,7 +120,6 @@ export default function WorkerHome({ navigation, route }) {
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-
 
           <View style={styles.plannedShift}>
             <View>
@@ -139,7 +154,6 @@ export default function WorkerHome({ navigation, route }) {
             </TouchableOpacity>
           </View>
 
-
           <View style={styles.freeShift}>
             <View>
               <Text style={styles.freeShiftDay}>Vrijdag</Text>
@@ -153,7 +167,6 @@ export default function WorkerHome({ navigation, route }) {
               <Text style={styles.reserveButtonText}>Reserveren</Text>
             </TouchableOpacity>
           </View>
-
 
           <View style={styles.freeShift}>
             <View>
@@ -170,7 +183,7 @@ export default function WorkerHome({ navigation, route }) {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -179,73 +192,78 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-    paddingTop: 40, // Ajoute un espace en haut pour descendre le contenu
   },
   scrollContent: {
     padding: 16,
   },
-  header: {
+  headerAligned: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
-    marginTop: 20, // Décale encore plus le header vers le bas
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4CAF50',
+    marginTop: 10,
   },
   profileIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
     backgroundColor: '#4CAF50',
     justifyContent: 'center',
     alignItems: 'center',
   },
   profileInitial: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
   },
-  shiftCounter: {
+  greetingText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#4CAF50',
+  },
+  aantalShiftsSection: {
     backgroundColor: '#4CAF50',
     padding: 16,
-    borderRadius: 8,
-    marginBottom: 20,
+    borderRadius: 12,
     alignItems: 'center',
-  },
-  shiftCounterText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  shiftCounterNumber: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  card: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 8,
+    justifyContent: 'center',
     marginBottom: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  cardTitle: {
+  aantalShiftsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  aantalShiftsCount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  nextShiftSection: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextShiftTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 8,
-    color: '#333',
   },
-  cardText: {
-    fontSize: 14,
-    color: '#555',
+  nextShiftBox: {
+    marginBottom: 8,
+  },
+  nextShiftDetails: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   section: {
     marginBottom: 20,
@@ -264,24 +282,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  plannedShiftDay: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  plannedShiftDate: {
-    fontSize: 14,
-    color: '#555',
-  },
-  plannedShiftTime: {
-    fontSize: 14,
-    color: '#555',
   },
   cancelButton: {
     backgroundColor: '#FF5722',
@@ -301,24 +301,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  freeShiftDay: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  freeShiftDate: {
-    fontSize: 14,
-    color: '#555',
-  },
-  freeShiftTime: {
-    fontSize: 14,
-    color: '#555',
   },
   reserveButton: {
     backgroundColor: '#4CAF50',
@@ -331,6 +313,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-
-
-

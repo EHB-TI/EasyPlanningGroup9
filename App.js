@@ -6,10 +6,14 @@ import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import WorkerHome from './screens/WorkerHome';
 import ManagerHome from './screens/ManagerHome';
-import UserPanel from './screens/UserPanel'; // Import UserPanel screen
-import ShiftDetailsScreen from './screens/shiftdetails';
+import UserPanel from './screens/UserPanel';
 import ManageShiftRequestScreen from './screens/ManageShiftRequestScreen';
+
 import WorkerAccountDetails from './screens/WorkerAccountDetails'; // Import WorkerAccountDetails
+
+import AddWorkersNeededScreen from './screens/AddWorkersNeededScreen';
+import WorkerMijnplanning from './screens/WorkerMijnplanning';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -26,8 +30,8 @@ export default function App() {
           options={{ title: 'Dashboard', headerShown: false }}
         />
         <Stack.Screen name="ManagerHome" component={ManagerHome} />
-        <Stack.Screen name="ShiftDetailsScreen" component={ShiftDetailsScreen} />
         <Stack.Screen name="ManageShiftRequestScreen" component={ManageShiftRequestScreen} />
+
         <Stack.Screen name="UserPanel" component={UserPanel} options={{ headerShown: false }}
  />
         {/* Add WorkerAccountDetails */}
@@ -36,6 +40,14 @@ export default function App() {
           component={WorkerAccountDetails}
           options={{ title: 'Account Details', headerShown: false }}
         />
+        <Stack.Screen
+          name="WorkerMijnplanning"
+          component={WorkerMijnplanning}
+          options={{ title: 'WorkerMijnplanning', headerShown: false }}
+        />
+        <Stack.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} />
+        
+
       </Stack.Navigator>
     </NavigationContainer>
   );
