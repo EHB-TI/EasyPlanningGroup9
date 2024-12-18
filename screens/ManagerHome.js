@@ -4,6 +4,7 @@ import { Entypo } from '@expo/vector-icons';
 // Import Firebase functions
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 
@@ -34,7 +35,7 @@ export default function ManagerHome({ navigation }) {
   }, []);
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Manager Dashboard</Text>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Overview Section */}
@@ -111,7 +112,7 @@ export default function ManagerHome({ navigation }) {
 
       {/* Bottom Navigation */}
       
-    </View>
+    </SafeAreaView>
   );
 }
 

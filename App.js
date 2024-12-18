@@ -45,6 +45,7 @@ function WorkerTabs() {
       <Tab.Screen name="WorkerHome" component={WorkerHome} options={{ headerShown: false }} />
       <Tab.Screen name="WorkerMijnplanning" component={WorkerMijnplanning} options={{ headerShown: false }} />
       <Tab.Screen name="WorkerAccountDetails" component={WorkerAccountDetails} options={{ headerShown: false }} />
+
     </Tab.Navigator>
   );
 }
