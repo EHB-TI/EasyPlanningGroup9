@@ -13,6 +13,8 @@ import WorkerAccountDetails from './screens/WorkerAccountDetails';
 import AddWorkersNeededScreen from './screens/AddWorkersNeededScreen';
 import WorkerMijnplanning from './screens/WorkerMijnplanning';
 import { Ionicons } from '@expo/vector-icons';
+import WorkerSettings from './screens/WorkerSettings';
+
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -28,7 +30,7 @@ function WorkerTabs() {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'WorkerMijnplanning') {
             iconName = focused ? 'calendar' : 'calendar-outline';
-          } else if (route.name === 'WorkerAccountDetails') {
+          } else if (route.name === 'WorkerSettings') {
             iconName = focused ? 'person' : 'person-outline';
           }
 
@@ -44,7 +46,7 @@ function WorkerTabs() {
     >
       <Tab.Screen name="WorkerHome" component={WorkerHome} options={{ headerShown: false }} />
       <Tab.Screen name="WorkerMijnplanning" component={WorkerMijnplanning} options={{ headerShown: false }} />
-      <Tab.Screen name="WorkerAccountDetails" component={WorkerAccountDetails} options={{ headerShown: false }} />
+      <Tab.Screen name="WorkerSettings" component={WorkerSettings} options={{ headerShown: false }} />
     </Tab.Navigator>
   );
 }
@@ -89,6 +91,7 @@ export default function App() {
         <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="WorkerAccountDetails" component={WorkerAccountDetails} options={{ headerShown: false }} />
         <Stack.Screen name="WorkerHome" component={WorkerTabs} options={{ headerShown: false }} />
         <Stack.Screen name="ManagerHome" component={ManagerTabs} options={{ headerShown: false }} />
         <Stack.Screen name="UserPanel" component={UserPanel} options={{ headerShown: false }} />
