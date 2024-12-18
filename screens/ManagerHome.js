@@ -1,37 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
-// Import Firebase functions
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-
-
-
+import { getDatabase, ref, get, child } from 'firebase/database'; // Import Firebase Realtime Database
+import { db } from '../firebaseConfig'; // Firebase configuratie
 
 export default function ManagerHome({ navigation }) {
-  //om te checken hvl pending users. op home page te plaatsen.
-  const [pendingCount, setPendingCount] = useState(0); 
+  const [pendingCount, setPendingCount] = useState(0); // Pending gebruikersaantal
+  const [approvedCount, setApprovedCount] = useState(0); // Approved gebruikersaantal
 
   const handleNavigate = (screen) => {
     navigation.navigate(screen);
   };
 
   useEffect(() => {
-  
-    //uithalen uit de db hoeveel pending users er zijn
+    // Functie om pending users uit de Realtime Database op te halen
     const fetchPendingUsers = async () => {
       try {
-        const q = query(collection(db, 'users'), where('status', '==', 'pending'));
-        const querySnapshot = await getDocs(q);
-        const count = querySnapshot.size; 
-        setPendingCount(count);
+        const dbRef = ref(getDatabase()); // Realtime Database referentie
+        const snapshot = await get(child(dbRef, 'users')); // Haal de 'users' node op
+  
+        if (snapshot.exists()) {
+          const usersData = snapshot.val();
+          // Filter gebruikers met status 'pending'
+          const pendingUsers = Object.values(usersData).filter(user => user.status === 'pending');
+          setPendingCount(pendingUsers.length); // Aantal pending users bijwerken
+        } else {
+          console.log('No pending users found.');
+          setPendingCount(0);
+        }
       } catch (error) {
-        console.error('Error fetching pending users count:', error);
+        console.error('Error fetching pending users:', error);
       }
     };
-
+  
     fetchPendingUsers();
   }, []);
+  
 
   return (
     <View style={styles.container}>
