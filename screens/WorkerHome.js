@@ -12,22 +12,22 @@ import {
 import { db } from '../firebaseConfig'; // Firebase Firestore instance
 import { getAuth } from 'firebase/auth';
 import { collection, query, where, onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
- 
+
 export default function WorkerHome({ navigation }) {
   const [user, setUser] = useState({ firstName: '', lastName: '' });
   const [shifts, setShifts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
- 
+
   const auth = getAuth(); // Initialize Firebase Auth
   const currentUser = auth.currentUser; // Get the currently authenticated user
- 
+
   useEffect(() => {
     if (currentUser) {
       const userId = currentUser.uid; // Retrieve the logged-in user's UID
       fetchUser(userId);
     }
   }, [currentUser]);
- 
+
   // Fetch user data from Firestore
   const fetchUser = async (userId) => {
     try {
@@ -42,12 +42,12 @@ export default function WorkerHome({ navigation }) {
       console.error('Error fetching user data:', error);
     }
   };
- 
+
   // Fetch shifts from Firestore
   const fetchShifts = () => {
     const shiftsRef = collection(db, 'shifts');
     const shiftsQuery = query(shiftsRef); // No specific filter for now
- 
+
     const unsubscribe = onSnapshot(shiftsQuery, (snapshot) => {
       const allShifts = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -55,15 +55,15 @@ export default function WorkerHome({ navigation }) {
       }));
       setShifts(allShifts);
     });
- 
+
     return unsubscribe;
   };
- 
+
   useEffect(() => {
     const unsubscribe = fetchShifts();
     return () => unsubscribe();
   }, []);
- 
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     if (currentUser) {
@@ -73,13 +73,13 @@ export default function WorkerHome({ navigation }) {
     fetchShifts();
     setTimeout(() => setRefreshing(false), 1000);
   }, [currentUser]);
- 
+
   const firstLetter = user.firstName.charAt(0).toUpperCase();
- 
+
   const handleNavigateToAccount = () => {
     navigation.navigate('WorkerAccountDetails', { user });
   };
- 
+
   // Cancel a shift
   const handleCancelShift = async (shiftId) => {
     Alert.alert(
@@ -106,7 +106,6 @@ export default function WorkerHome({ navigation }) {
       { cancelable: true }
     );
   };
-
 
   // Cancel a pending shift
   const handleCancelPendingShift = async (shiftId) => {
@@ -168,11 +167,11 @@ export default function WorkerHome({ navigation }) {
       { cancelable: true }
     );
   };
- 
+
   const plannedShiftsCount = shifts.filter(
     (shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid
   ).length;
- 
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -257,8 +256,12 @@ export default function WorkerHome({ navigation }) {
               <View key={shift.id} style={styles.plannedShift}>
                 <View>
                   <Text style={styles.plannedShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
-                  <Text style={styles.plannedShiftDate}>{new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}</Text>
-                  <Text style={styles.plannedShiftTime}>Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}</Text>
+                  <Text style={styles.plannedShiftDate}>
+                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  </Text>
+                  <Text style={styles.plannedShiftTime}>
+                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.cancelButton}
@@ -269,7 +272,7 @@ export default function WorkerHome({ navigation }) {
               </View>
             ))}
         </View>
- 
+
         {/* Free Shifts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Beschikbare Shifts</Text>
@@ -279,8 +282,12 @@ export default function WorkerHome({ navigation }) {
               <View key={shift.id} style={styles.freeShift}>
                 <View>
                   <Text style={styles.freeShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
-                  <Text style={styles.freeShiftDate}>{new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}</Text>
-                  <Text style={styles.freeShiftTime}>Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}</Text>
+                  <Text style={styles.freeShiftDate}>
+                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  </Text>
+                  <Text style={styles.freeShiftTime}>
+                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.reserveButton}
@@ -295,7 +302,7 @@ export default function WorkerHome({ navigation }) {
     </SafeAreaView>
   );
 }
- 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -329,18 +336,38 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#4CAF50',
   },
-  aantalShiftsSection: {
-    backgroundColor: '#4CAF50',
+  volgendeShiftSection: {
+    backgroundColor: '#FFFFFF',
     padding: 16,
     borderRadius: 12,
+    marginBottom: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  volgendeShiftTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  volgendeShiftText: {
+    fontSize: 14,
+    color: '#333',
+    textAlign: 'center',
+  },
+  
+  aantalShiftsSection: {
+    backgroundColor: '#4CAF50',
+    padding: 12,
+    borderRadius: 12,
+    width: '45%',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   aantalShiftsTitle: {
     fontSize: 16,
@@ -355,7 +382,6 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 20,
-    
   },
   sectionTitle: {
     fontSize: 18,
@@ -371,11 +397,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   cancelPendingButton: {
     backgroundColor: '#FF5722',
@@ -395,11 +416,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   cancelButton: {
     backgroundColor: '#FF5722',
@@ -419,11 +435,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   reserveButton: {
     backgroundColor: '#4CAF50',
@@ -436,14 +447,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-
-
-
-
-
-
-
-
-
-
-
