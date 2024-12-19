@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Entypo } from '@expo/vector-icons';
 import { getDatabase, ref, get, child } from 'firebase/database';
 
 export default function ManagerHome({ navigation }) {
@@ -31,75 +32,82 @@ export default function ManagerHome({ navigation }) {
   }, []);
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="#F5F5F5" />
-      <Text style={styles.header}>Manager Dashboard</Text>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Overview Section */}
+    <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>Welcome, Manager</Text>
+        <Text style={styles.subHeader}>Your Dashboard</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Overview Cards */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('UserPanel')}>
-            <Text style={styles.cardText}>Pending Account Validation</Text>
-            <Text style={styles.cardNumber}>{pendingCount}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ShiftRequestScreen')}>
-            <Text style={styles.cardText}>Pending Shift Requests</Text>
-            <Text style={styles.cardNumber}>2</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ProductivityScreen')}>
-            <Text style={styles.cardText}>Update Productivity</Text>
-          </TouchableOpacity>
+          <View style={styles.cardRow}>
+            <TouchableOpacity style={styles.card} onPress={() => handleNavigate('UserPanel')}>
+              <View style={styles.cardIcon}>
+                <Entypo name="users" size={32} color="#4CAF50" />
+              </View>
+              <Text style={styles.cardTitle}>Pending Accounts</Text>
+              <Text style={styles.cardNumber}>{pendingCount}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ShiftRequestScreen')}>
+              <View style={styles.cardIcon}>
+                <Entypo name="clipboard" size={32} color="#FF6F61" />
+              </View>
+              <Text style={styles.cardTitle}>Shift Requests</Text>
+              <Text style={styles.cardNumber}>2</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Quick Actions Section */}
+        {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('UserPanel')}>
-            <Text style={styles.cardText}>Validate Accounts</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('AdminPanel')}>
-            <Text style={styles.cardText}>Admin Panel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ManageShiftRequestScreen')}>
-            <Text style={styles.cardText}>Manage Shift Requests</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('AddWorkersNeededScreen')}>
-            <Text style={styles.cardText}>Add Workers Needed</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Notifications Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
-          <TouchableOpacity style={styles.notification} onPress={() => handleNavigate('ShiftRequestDetailsScreen')}>
-            <Text style={styles.cardText}>New Shift Request</Text>
-            <Text style={styles.cardDetail}>Yassine</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.notification} onPress={() => handleNavigate('ShiftCancelationDetailsScreen')}>
-            <Text style={styles.cardText}>Shift Cancelation</Text>
-            <Text style={styles.cardDetail}>Patrick</Text>
-          </TouchableOpacity>
+          <View style={styles.cardRow}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('UserPanel')}>
+              <Text style={styles.actionCardText}>Validate Accounts</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('AdminPanel')}>
+              <Text style={styles.actionCardText}>Admin Panel</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.cardRow}>
+            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('ManageShiftRequestScreen')}>
+              <Text style={styles.actionCardText}>Manage Shifts</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('AddWorkersNeededScreen')}>
+              <Text style={styles.actionCardText}>Add Workers</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
+  container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: '#F5FAFB',
   },
-  scrollContent: {
-    padding: 16,
+  headerContainer: {
+    padding: 20,
+    backgroundColor: '#4CAF50',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   header: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
-    color: '#23C882',
-    marginBottom: 16,
-    textAlign: 'center',
-    marginTop: 20,
+    color: '#FFFFFF',
+  },
+  subHeader: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginTop: 5,
+  },
+  content: {
+    padding: 16,
   },
   section: {
     marginBottom: 24,
@@ -107,48 +115,58 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: '#333',
     marginBottom: 12,
-    color: '#444',
+  },
+  cardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   card: {
     backgroundColor: '#FFFFFF',
-    padding: 16,
     borderRadius: 12,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    padding: 16,
+    width: '48%',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
+    shadowRadius: 4,
     elevation: 3,
   },
-  cardText: {
+  cardIcon: {
+    marginBottom: 10,
+  },
+  cardTitle: {
     fontSize: 16,
     fontWeight: '500',
     color: '#333',
+    textAlign: 'center',
   },
   cardNumber: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#23C882',
+    color: '#4CAF50',
+    marginTop: 8,
   },
-  notification: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
+  actionCard: {
+    backgroundColor: '#4CAF50',
     borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    width: '48%',
+    alignItems: 'center',
     marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 5,
-    elevation: 3,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  cardDetail: {
-    fontSize: 14,
-    color: '#666',
+  actionCardText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
+
 });
