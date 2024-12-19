@@ -45,7 +45,7 @@ export default function AccountDetails({ navigation }) {
           lastName: userData.lastName || "",
           phone: userData.phone || "Niet gespecificeerd",
           email: userData.email || "Niet gespecificeerd",
-          fixedDays: userData.fixDay || "Niet gespecificeerd", 
+          fixedDays: userData.fixDay || "Niet gespecificeerd",
         });
       } else {
         console.log("Utilisateur introuvable dans la base de données.");
@@ -68,7 +68,7 @@ export default function AccountDetails({ navigation }) {
       const userRef = ref(database, `users/${userId}`);
       await update(userRef, {
         phone: user.phone,
-        fixDay: user.fixedDays, // Mise à jour de fixDay
+        email: user.email,
       });
       console.log("Les données utilisateur ont été mises à jour.");
     } catch (error) {
@@ -105,35 +105,35 @@ export default function AccountDetails({ navigation }) {
 
         <View style={styles.whitecontainer}>
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, isEditing && styles.editLabel]}>Voornaam:</Text>
+            <Text style={styles.label}>Voornaam:</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isEditing && styles.disabledInput]}
               value={user.firstName}
-              onChangeText={(text) => handleChange("firstName", text)}
+              editable={false}
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, isEditing && styles.editLabel]}>Achternaam:</Text>
+            <Text style={styles.label}>Achternaam:</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isEditing && styles.disabledInput]}
               value={user.lastName}
-              onChangeText={(text) => handleChange("lastName", text)}
+              editable={false}
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, isEditing && styles.editLabel]}>GSM:</Text>
+            <Text style={styles.label}>GSM:</Text>
             <TextInput
               style={styles.input}
-              value={user.phone.toString()} // Convertir en chaîne si c'est un entier
+              value={user.phone.toString()}
               editable={isEditing}
               onChangeText={(text) => handleChange("phone", text)}
             />
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, isEditing && styles.editLabel]}>E-mail:</Text>
+            <Text style={styles.label}>E-mail:</Text>
             <TextInput
               style={styles.input}
               value={user.email}
@@ -143,11 +143,11 @@ export default function AccountDetails({ navigation }) {
           </View>
 
           <View style={styles.inputContainer}>
-            <Text style={[styles.label, isEditing && styles.editLabel]}>Vaste Dagen:</Text>
+            <Text style={styles.label}>Vaste Dagen:</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, isEditing && styles.disabledInput]}
               value={user.fixedDays}
-              onChangeText={(text) => handleChange("fixedDays", text)}
+              editable={false}
             />
           </View>
 
@@ -211,12 +211,15 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     color: "#999999",
   },
-  editLabel: {
-    color: "#505050",
-  },
   input: {
     backgroundColor: "#F6F6F6",
     borderRadius: 10,
+    padding: 10,
+    color: "#000",
+  },
+  disabledInput: {
+    backgroundColor: "#E0E0E0",
+    color: "#A0A0A0",
   },
   button: {
     backgroundColor: "#4CAF50",
