@@ -1,5 +1,13 @@
 import React, { useState } from 'react';
-import { View, TextInput, Button, StyleSheet, Alert, Text, TouchableOpacity } from 'react-native';
+import {
+  View,
+  TextInput,
+  Alert,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons'; // Import pour l'icône de retour
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { getDatabase, ref, set, get } from 'firebase/database';
 import { auth } from '../firebaseConfig'; // Firebase configuratie importeren
@@ -17,43 +25,38 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Error', 'All fields are required.');
       return;
     }
-  
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match.');
       return;
     }
-  
+
     try {
-      // Stap 1: Gebruiker registreren in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-  
-      // Stap 2: Realtime Database referentie
+
       const db = getDatabase();
       const usersRef = ref(db, 'users');
-  
-      // Stap 3: Genereer oplopende user_id
+
       const snapshot = await get(usersRef);
-      let userId = 1; // Start bij user_id_1
+      let userId = 1;
       if (snapshot.exists()) {
         const users = snapshot.val();
-        userId = Object.keys(users).length + 1; // Bereken volgende user_id
+        userId = Object.keys(users).length + 1;
       }
-  
-      // Stap 4: Voeg de gebruiker toe aan de Realtime Database
+
       await set(ref(db, `users/user_id_${userId}`), {
         email,
         first_name: firstName,
         last_name: lastName,
         phone,
-        role: 'worker', // Standaard waarde
-        sap_number: 'SAP123456', // Standaard waarde
-        status: 'pending', // Standaard waarde
+        role: 'worker',
+        sap_number: 'SAP123456',
+        status: 'pending',
       });
-  
-      // Bevestiging
+
       Alert.alert('Success', 'Account created successfully!');
-      navigation.navigate('Home'); // Of je navigatie naar een andere pagina
+      navigation.navigate('Welcome'); // Retour à la page de bienvenue
     } catch (error) {
       Alert.alert('Error', error.message);
     }
@@ -61,50 +64,87 @@ export default function RegisterScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Register</Text>
-      <TextInput
-        placeholder="First Name"
-        value={firstName}
-        onChangeText={setFirstName}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Last Name"
-        value={lastName}
-        onChangeText={setLastName}
-        style={styles.input}
-      />
-      <TextInput
-        placeholder="Phone"
-        value={phone}
-        onChangeText={setPhone}
-        style={styles.input}
-        keyboardType="phone-pad"
-      />
-      <TextInput
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        style={styles.input}
-        keyboardType="email-address"
-      />
-      <TextInput
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-        secureTextEntry
-      />
-      <TextInput
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        style={styles.input}
-        secureTextEntry
-      />
-      <TouchableOpacity style={styles.button} onPress={handleRegister}>
-        <Text style={styles.buttonText}>Create</Text>
-      </TouchableOpacity>
+      <View style={styles.registerBox}>
+        {/* Flèche de retour et Titre */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backArrow}
+            onPress={() => navigation.navigate('Welcome')}
+          >
+            <Ionicons name="arrow-back" size={24} color="#28a745" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Register</Text>
+        </View>
+
+        {/* First Name Input */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            placeholder="First Name"
+            value={firstName}
+            onChangeText={setFirstName}
+            style={styles.input}
+          />
+        </View>
+
+        {/* Last Name Input */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            placeholder="Last Name"
+            value={lastName}
+            onChangeText={setLastName}
+            style={styles.input}
+          />
+        </View>
+
+        {/* Phone Input */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            placeholder="Phone"
+            value={phone}
+            onChangeText={setPhone}
+            style={styles.input}
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        {/* Email Input */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            style={styles.input}
+            keyboardType="email-address"
+          />
+        </View>
+
+        {/* Password Input */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            style={styles.input}
+            secureTextEntry
+          />
+        </View>
+
+        {/* Confirm Password Input */}
+        <View style={styles.inputContainer}>
+          <TextInput
+            placeholder="Confirm Password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            style={styles.input}
+            secureTextEntry
+          />
+        </View>
+
+        {/* Register Button */}
+        <TouchableOpacity style={styles.button} onPress={handleRegister}>
+          <Text style={styles.buttonText}>Create</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -115,32 +155,62 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#f0faff',
+  },
+  registerBox: {
+    width: '90%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
     padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  header: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backArrow: {
+    marginRight: 10, // Espace entre la flèche et le titre
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#28a745',
-    marginBottom: 20,
+  },
+  inputContainer: {
+    width: '100%',
+    marginBottom: 15,
   },
   input: {
     width: '100%',
+    height: 50,
     backgroundColor: '#fff',
-    padding: 15,
-    marginBottom: 10,
-    borderRadius: 5,
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    fontSize: 16,
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
     elevation: 2,
   },
   button: {
     backgroundColor: '#28a745',
-    padding: 15,
-    borderRadius: 5,
+    paddingVertical: 15,
+    borderRadius: 10,
     width: '100%',
     alignItems: 'center',
     marginTop: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
   },
   buttonText: {
     color: '#fff',

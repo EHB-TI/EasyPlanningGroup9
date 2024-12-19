@@ -205,6 +205,6 @@ const styles = StyleSheet.create({
   },
   safeContainer: {
     flex: 1,
-    backgroundColor: "#2D4535", // Couleur de fond pour correspondre à la barre d'état
+    backgroundColor: "#F5F5F5",
   },
 });
