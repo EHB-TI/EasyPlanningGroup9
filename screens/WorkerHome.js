@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { db } from '../firebaseConfig'; // Firebase Firestore instance
+import { getDatabase, ref, get, child } from 'firebase/database'; // Import Firebase Realtime Database
 import { getAuth } from 'firebase/auth';
 import { collection, query, where, onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
 
