@@ -17,46 +17,11 @@ import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // Firebase functies
 import { collection, getDocs, query, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { getDatabase, ref, get, child } from 'firebase/database'; 
+import { getDatabase, ref, get, child, update,set } from 'firebase/database'; 
 import { db } from '../firebaseConfig';
 
 // Functie om een gebruiker goed te keuren
-const handleApproveUser = async (user) => {
-  try {
-    const db = getDatabase();
 
-    // 1. Update de user status naar 'approved'
-    const userRef = ref(db, `users/${user.id}`);
-    await update(userRef, { status: "approved" });
-
-    // 2. Maak een nieuwe worker entry aan in 'workers'
-    const workerId = `worker_${user.id}`; // Genereer een uniek ID voor de worker
-    const workerRef = ref(db, `workers/${workerId}`);
-
-    const workerData = {
-      user_id: user.id,
-      contract_id: "contract1", // Dit kun je aanpassen naar de juiste contract_id
-      fixed_days: {
-        Monday: true, // Deze kunnen dynamisch ingevuld worden
-        Wednesday: true,
-      },
-      max_hours_week: 40, // Default max uren, dit kan aangepast worden
-    };
-
-    await set(workerRef, workerData);
-
-    // 3. Optioneel: Verwijder de gebruiker uit 'pending_users'
-    const pendingUserRef = ref(db, `pending_users/${user.id}`);
-    await remove(pendingUserRef);
-
-    console.log("User approved and added to workers:", workerData);
-    Alert.alert("Success", "User approved and added to workers!");
-
-  } catch (error) {
-    console.error("Error approving user:", error);
-    Alert.alert("Error", "Failed to approve user.");
-  }
-};
 const AdminPanelScreen = () => {
   // State variabelen (laden, data, etc.)
   
@@ -69,7 +34,7 @@ const AdminPanelScreen = () => {
   const [modalVisible, setModalVisible] = useState(false); // zichtbaarheid approve-modal
   const [editModalVisible, setEditModalVisible] = useState(false); // zichtbaarheid edit-modal
   const [selectedUser, setSelectedUser] = useState(null); // geselecteerde gebruiker
-  const [fixDay, setFixDay] = useState(''); // ingevoerde dagen
+  const [fixDay, setFixDay] = useState({}); // ingevoerde dagen
   const [role, setRole] = useState(''); // geselecteerde rol
   const [contractType, setContractType] = useState(''); // geselecteerd contracttype
   const [phone, setPhone] = useState(''); // telefoonnummer invoer
@@ -87,7 +52,57 @@ const AdminPanelScreen = () => {
     // Laden van gebruikers data bij montage
     fetchUsers();
   }, []);
-
+  const handleApproveUser = async (user) => {
+    try {
+      const db = getDatabase();
+  
+      // Update user status
+      const userRef = ref(db, `users/${user.id}`);
+      await update(userRef, { status: 'approved' });
+  
+      // Determine next worker ID
+      const workersRef = ref(db, 'workers');
+      const workersSnapshot = await get(workersRef);
+  
+      let nextWorkerId = 1;
+      if (workersSnapshot.exists()) {
+        const workersData = workersSnapshot.val();
+        nextWorkerId = Object.keys(workersData).length + 1;
+      }
+  
+      // Prepare worker data
+      const workerData = {
+        user_id: user.id,
+        contract_type: contractType,
+        fixed_days: fixDay, // Use fixDay as an object
+        ...(contractType === 'Student' && { max_hours_week: parseInt(maxHoursWeek, 10) }),
+      };
+  
+      // Save new worker
+      const newWorkerRef = ref(db, `workers/worker_id_${nextWorkerId}`);
+      await set(newWorkerRef, workerData);
+  
+      Alert.alert('Success', `User ${user.first_name} has been approved as a worker.`);
+      fetchUsers(); // Refresh data
+    } catch (error) {
+      console.error('Error approving user:', error);
+      Alert.alert('Error', 'Failed to approve the user.');
+    }
+  };
+  
+  // Update fixDay when text is entered
+  <TextInput
+    placeholder="Fixed Days (e.g., Monday, Wednesday)"
+    style={styles.input}
+    onChangeText={(text) => {
+      const daysArray = text.split(',').map((day) => day.trim());
+      const daysObject = daysArray.reduce((acc, day) => {
+        acc[day] = true;
+        return acc;
+      }, {});
+      setFixDay(daysObject); // Update fixDay as an object
+    }}
+  />
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -356,72 +371,62 @@ const AdminPanelScreen = () => {
   };
 
   const renderItem = ({ item, section }) => {
-    // Gebruiker rij renderen
     if (section.title === 'Pending Users') {
-      // Pending user weergave
       return (
         <View style={styles.pendingUserContainer}>
           <Text style={styles.pendingUserName}>
             {item.first_name} {item.last_name}
           </Text>
-          <Text style={styles.pendingUserDetails}> {item.email}</Text>
-          <Text style={styles.pendingUserDetails}>+{item.phone}</Text>
-          <View style={styles.pendingButtonContainer}>
-            <TouchableOpacity
-              style={styles.originalApproveButton}
-              onPress={() => {
-                setSelectedUser(item);
-                setFixDay('');
-                setRole('');
-                setContractType('');
-                setPhone('');
-                setModalVisible(true);
-              }}
-            >
-              <Text style={styles.buttonText}>Approve</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.originalRejectButton}
-              onPress={() => handleApproveUser(item)}
-
-            >
-              <Text style={styles.buttonText}>Delete</Text>
-            </TouchableOpacity>
+          <Text style={styles.pendingUserDetails}>Email: {item.email}</Text>
+          <Text style={styles.pendingUserDetails}>Phone: {item.phone}</Text>
+          <View style={styles.contractContainer}>
+            <TextInput
+              placeholder="Contract Type (e.g., CDI, Student)"
+              style={styles.input}
+              value={contractType}
+              onChangeText={setContractType}
+            />
+            <TextInput
+  placeholder="Fixed Days (e.g., Monday, Wednesday)"
+  style={styles.input}
+  onChangeText={(text) => {
+    const daysArray = text.split(',').map((day) => day.trim());
+    const daysObject = daysArray.reduce((acc, day) => {
+      acc[day] = true;
+      return acc;
+    }, {});
+    setFixDay(daysObject); // Correctly update the fixedDays state
+  }}
+/>
+            {contractType === 'Student' && (
+              <TextInput
+                placeholder="Max Hours per Week"
+                style={styles.input}
+                keyboardType="numeric"
+                value={maxHoursWeek}
+                onChangeText={setMaxHoursWeek}
+              />
+            )}
           </View>
-        </View>
-      );
-    } else {
-      // existing user weergave
-      return (
-        <View style={styles.userContainer}>
-          <Text style={styles.userName}>
-            {item.first_name} {item.last_name}
-          </Text>
-          <Text style={styles.userDetails}> {item.email}</Text>
-          <Text style={styles.userDetails}>+{item.phone}</Text>
-          <Text style={styles.userDetails}> {item.fixDay}</Text>
-          <Text style={styles.userDetails}> {item.role}</Text>
-          <Text style={styles.userDetails}> {item.contract}</Text>
-
-          {/* delet en edit button */}
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.originalApproveButton}
-              onPress={() => handleEditUser(item)}
-            >
-              <Text style={styles.buttonText}>Edit</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.originalRejectButton}
-              onPress={() => handleDeleteUser(item)}
-            >
-              <Text style={styles.buttonText}>Delete</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.originalApproveButton}
+            onPress={() => handleApproveUser(item)}
+          >
+            <Text style={styles.buttonText}>Approve</Text>
+          </TouchableOpacity>
         </View>
       );
     }
+  
+    return (
+      <View style={styles.userContainer}>
+        <Text style={styles.userName}>{item.first_name} {item.last_name}</Text>
+        <Text style={styles.userDetails}>Email: {item.email}</Text>
+        <Text style={styles.userDetails}>Role: {item.role || 'N/A'}</Text>
+      </View>
+    );
   };
+  
 
   const renderSectionHeader = ({ section }) => (
     // Sectie kop weergave met toggle
