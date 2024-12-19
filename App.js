@@ -13,6 +13,7 @@ import WorkerSettings from './screens/WorkerSettings';
 import ManageShiftRequestScreen from './screens/ManageShiftRequestScreen';
 import AddWorkersNeededScreen from './screens/AddWorkersNeededScreen';
 import WorkerAccountDetails from './screens/WorkerAccountDetails';
+import UserPanel from './screens/UserPanel';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -84,6 +85,7 @@ export default function App() {
         <Stack.Screen name="WorkerHome" component={WorkerTabs} options={{ headerShown: false }} />
         <Stack.Screen name="ManagerHome" component={ManagerTabs} options={{ headerShown: false }} />
         <Stack.Screen name="WorkerSettings" component={WorkerSettings} options={{ headerShown: false }} />
+        <Stack.Screen name="UserPanel" component={UserPanel} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

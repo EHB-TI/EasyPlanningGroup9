@@ -1,26 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
-// Import Firebase functions
-
-
-
-
+import { getDatabase, ref, get, child } from 'firebase/database'; // Import Firebase Realtime Database
+import { db } from '../firebaseConfig'; // Firebase configuratie
+ 
 export default function ManagerHome({ navigation }) {
   const [pendingCount, setPendingCount] = useState(0); // Pending gebruikersaantal
   const [approvedCount, setApprovedCount] = useState(0); // Approved gebruikersaantal
-
+ 
   const handleNavigate = (screen) => {
     navigation.navigate(screen);
   };
-
+ 
   useEffect(() => {
     // Functie om pending users uit de Realtime Database op te halen
     const fetchPendingUsers = async () => {
       try {
         const dbRef = ref(getDatabase()); // Realtime Database referentie
         const snapshot = await get(child(dbRef, 'users')); // Haal de 'users' node op
-  
+ 
         if (snapshot.exists()) {
           const usersData = snapshot.val();
           // Filter gebruikers met status 'pending'
@@ -34,13 +32,13 @@ export default function ManagerHome({ navigation }) {
         console.error('Error fetching pending users:', error);
       }
     };
-  
+ 
     fetchPendingUsers();
   }, []);
-  
-
+ 
+ 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <Text style={styles.header}>Manager Dashboard</Text>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Overview Section */}
@@ -68,7 +66,7 @@ export default function ManagerHome({ navigation }) {
             <Text style={styles.cardText}>Update productivity</Text>
           </TouchableOpacity>
         </View>
-
+ 
         {/* Quick Action Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick action</Text>
@@ -94,7 +92,7 @@ export default function ManagerHome({ navigation }) {
             <Text style={styles.cardText}>Add workers needed</Text>
           </TouchableOpacity>
         </View>
-
+ 
         {/* Notification Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notification</Text>
@@ -114,13 +112,35 @@ export default function ManagerHome({ navigation }) {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
+ 
       {/* Bottom Navigation */}
-      
-    </SafeAreaView>
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleNavigate('HomeScreen')}
+        >
+          <Entypo name="home" size={24} color="black" />
+          <Text style={styles.navItemText}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleNavigate('CalendarScreen')}
+        >
+          <Entypo name="calendar" size={24} color="black" />
+          <Text style={styles.navItemText}>Calendar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => handleNavigate('MoreScreen')}
+        >
+          <Entypo name="dots-three-horizontal" size={24} color="black" />
+          <Text style={styles.navItemText}>More</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,

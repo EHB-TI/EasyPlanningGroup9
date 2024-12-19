@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons'; // Import pour l'icône de retour
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { getDatabase, ref, set, get } from 'firebase/database';
-import { auth } from '../firebaseConfig'; // Firebase configuratie importeren
+
+import { getDatabase, ref, set,get } from 'firebase/database';
+
+import { auth } from '../firebaseConfig';
 
 export default function RegisterScreen({ navigation }) {
   const [firstName, setFirstName] = useState('');
