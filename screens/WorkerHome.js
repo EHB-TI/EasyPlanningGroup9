@@ -12,22 +12,22 @@ import {
 import { db } from '../firebaseConfig'; // Firebase Firestore instance
 import { getAuth } from 'firebase/auth';
 import { collection, query, where, onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
-
+ 
 export default function WorkerHome({ navigation }) {
   const [user, setUser] = useState({ firstName: '', lastName: '' });
   const [shifts, setShifts] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
-
+ 
   const auth = getAuth(); // Initialize Firebase Auth
   const currentUser = auth.currentUser; // Get the currently authenticated user
-
+ 
   useEffect(() => {
     if (currentUser) {
       const userId = currentUser.uid; // Retrieve the logged-in user's UID
       fetchUser(userId);
     }
   }, [currentUser]);
-
+ 
   // Fetch user data from Firestore
   const fetchUser = async (userId) => {
     try {
@@ -42,12 +42,12 @@ export default function WorkerHome({ navigation }) {
       console.error('Error fetching user data:', error);
     }
   };
-
+ 
   // Fetch shifts from Firestore
   const fetchShifts = () => {
     const shiftsRef = collection(db, 'shifts');
     const shiftsQuery = query(shiftsRef); // No specific filter for now
-
+ 
     const unsubscribe = onSnapshot(shiftsQuery, (snapshot) => {
       const allShifts = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -55,15 +55,15 @@ export default function WorkerHome({ navigation }) {
       }));
       setShifts(allShifts);
     });
-
+ 
     return unsubscribe;
   };
-
+ 
   useEffect(() => {
     const unsubscribe = fetchShifts();
     return () => unsubscribe();
   }, []);
-
+ 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     if (currentUser) {
@@ -73,13 +73,13 @@ export default function WorkerHome({ navigation }) {
     fetchShifts();
     setTimeout(() => setRefreshing(false), 1000);
   }, [currentUser]);
-
+ 
   const firstLetter = user.firstName.charAt(0).toUpperCase();
-
+ 
   const handleNavigateToAccount = () => {
     navigation.navigate('WorkerAccountDetails', { user });
   };
-
+ 
   // Cancel a shift
   const handleCancelShift = async (shiftId) => {
     Alert.alert(
@@ -107,7 +107,38 @@ export default function WorkerHome({ navigation }) {
     );
   };
 
-  // Reserve a shift
+
+  // Cancel a pending shift
+  const handleCancelPendingShift = async (shiftId) => {
+    Alert.alert(
+      'Aanvraag annuleren',
+      'Weet je zeker dat je deze aanvraag wilt annuleren?',
+      [
+        {
+          text: 'Nee',
+          style: 'cancel',
+        },
+        {
+          text: 'Ja',
+          onPress: async () => {
+            try {
+              const shiftRef = doc(db, 'shifts', shiftId);
+              await updateDoc(shiftRef, {
+                status: 'available',
+                reservedBy: null, // Reset the reservedBy field
+              });
+              Alert.alert('Success', 'De aanvraag is geannuleerd.');
+            } catch (error) {
+              console.error('Fout bij het annuleren van de aanvraag:', error);
+              Alert.alert('Error', 'Er ging iets mis bij het annuleren van de aanvraag.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const handleReserveShift = async (shiftId) => {
     Alert.alert(
       'Shift reserveren',
@@ -121,17 +152,15 @@ export default function WorkerHome({ navigation }) {
           text: 'Ja',
           onPress: async () => {
             try {
-              // Ajouter une demande dans Applications
-              await addDoc(collection(db, 'Applications'), {
-                worker_id: userId, // ID du worker
-                shift_id: shiftId, // ID du shift
-                application_date: Timestamp.now(),
-                status: 'applied', // État initial de la demande
+              const shiftRef = doc(db, 'shifts', shiftId);
+              await updateDoc(shiftRef, {
+                status: 'pending', // Set the status to "pending"
+                reservedBy: currentUser.uid, // Save the user who reserved it
               });
-              Alert.alert('Success', 'Shift aanvraag is ingediend!');
+              Alert.alert('Success', 'Shift is nu in afwachting van goedkeuring.');
             } catch (error) {
-              console.error('Fout bij het indienen van de aanvraag:', error);
-              Alert.alert('Error', 'Er ging iets mis bij het indienen van de aanvraag.');
+              console.error('Fout bij het reserveren van de shift:', error);
+              Alert.alert('Error', 'Er ging iets mis bij het reserveren van de shift.');
             }
           },
         },
@@ -139,11 +168,11 @@ export default function WorkerHome({ navigation }) {
       { cancelable: true }
     );
   };
-
+ 
   const plannedShiftsCount = shifts.filter(
     (shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid
   ).length;
-
+ 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -158,21 +187,66 @@ export default function WorkerHome({ navigation }) {
           </TouchableOpacity>
         </View>
 
+
+        <View style={styles.volgendeShiftSection}>
+  <Text style={styles.volgendeShiftTitle}>Volgende shift</Text>
+  {shifts
+    .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
+    .sort((a, b) => a.date.seconds - b.date.seconds)[0] ? (
+    <>
+      <Text style={styles.volgendeShiftText}>
+        {new Date(
+          shifts
+            .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
+            .sort((a, b) => a.date.seconds - b.date.seconds)[0].date.seconds * 1000
+        ).toLocaleDateString('nl-NL')}
+      </Text>
+      <Text style={styles.volgendeShiftText}>
+        Start:{" "}
+        {new Date(
+          shifts
+            .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
+            .sort((a, b) => a.date.seconds - b.date.seconds)[0].date.seconds * 1000
+        ).toLocaleTimeString('nl-NL')}
+      </Text>
+    </>
+  ) : (
+    <Text style={styles.volgendeShiftText}>Geen geplande shift</Text>
+  )}
+</View>
+
         {/* Aantal Shifts Section */}
         <View style={styles.aantalShiftsSection}>
           <Text style={styles.aantalShiftsTitle}>Aantal shifts</Text>
           <Text style={styles.aantalShiftsCount}>{plannedShiftsCount}</Text>
         </View>
 
-        <View style={styles.nextShiftSection}>
-          <Text style={styles.nextShiftTitle}>Volgende shift</Text>
-          {shifts.length > 0 && (
-            <View style={styles.nextShiftBox}>
-              <Text style={styles.nextShiftDetails}>Datum: {new Date(shifts[0].date.seconds * 1000).toLocaleDateString('nl-NL')}</Text>
-              <Text style={styles.nextShiftDetails}>Start: {new Date(shifts[0].date.seconds * 1000).toLocaleTimeString('nl-NL')}</Text>
-            </View>
-          )}
+        {/* Pending Shifts Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Shifts in Afwachting</Text>
+          {shifts
+            .filter((shift) => shift.status === 'pending' && shift.reservedBy === currentUser?.uid)
+            .map((shift) => (
+              <View key={shift.id} style={styles.pendingShift}>
+                <View>
+                  <Text style={styles.pendingShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
+                  <Text style={styles.pendingShiftDate}>
+                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  </Text>
+                  <Text style={styles.pendingShiftTime}>
+                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.cancelPendingButton}
+                  onPress={() => handleCancelPendingShift(shift.id)}
+                >
+                  <Text style={styles.cancelPendingButtonText}>Annuleren</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
         </View>
+        
 
         {/* Planned Shifts Section */}
         <View style={styles.section}>
@@ -195,7 +269,7 @@ export default function WorkerHome({ navigation }) {
               </View>
             ))}
         </View>
-
+ 
         {/* Free Shifts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Beschikbare Shifts</Text>
@@ -221,7 +295,7 @@ export default function WorkerHome({ navigation }) {
     </SafeAreaView>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -279,34 +353,39 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  nextShiftSection: {
-    marginBottom: 20,
-    padding: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  nextShiftTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  nextShiftBox: {
-    marginBottom: 8,
-  },
-  nextShiftDetails: {
-    fontSize: 16,
-    textAlign: 'center',
-  },
   section: {
     marginBottom: 20,
+    
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
     color: '#333',
+  },
+  pendingShift: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFF9C4',
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cancelPendingButton: {
+    backgroundColor: '#FF5722',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  cancelPendingButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
   },
   plannedShift: {
     flexDirection: 'row',
@@ -316,6 +395,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cancelButton: {
     backgroundColor: '#FF5722',
@@ -335,6 +419,11 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   reserveButton: {
     backgroundColor: '#4CAF50',
