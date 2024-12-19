@@ -154,19 +154,6 @@ export default function WorkerMijnplanning({ navigation }) {
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
         </View>
-        <View style={styles.plannedShift}>
-          <View>
-            <Text style={styles.plannedShiftDay}>Woensdag</Text>
-            <Text style={styles.plannedShiftDate}>27 novembre 2024</Text>
-            <Text style={styles.plannedShiftTime}>8:30 tot 16:00</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => handleCancelShift("shiftId124")}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </View>
   );
