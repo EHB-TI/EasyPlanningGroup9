@@ -1,86 +1,49 @@
-// Import necessary modules
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const moment = require("moment-timezone");
 
-// Initialize Firebase Admin SDK
 admin.initializeApp();
 
-// Reference to Realtime Database
 const db = admin.database();
-
-// Configuration Constants
-const WEEKS_TO_KEEP = 7; // Total number of weeks to retain
-const WEEKS_TO_CLOSE = 2; // Number of weeks to close each run
-const TIMEZONE = "Europe/Brussels"; // Time zone for scheduling
-
-/**
- * Fetch all existing weeks from the database.
- * @return {Object} An object containing all weeks.
- */
-async function getCurrentWeeks() {
-  const weeksSnapshot = await db.ref("weeks").once("value");
-  return weeksSnapshot.val() || {};
-}
+const TIMEZONE = "Europe/Brussels";
+const WEEKS_TO_KEEP = 7;
+const DAYS_OF_WEEK =
+["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 /**
- * Add a new week to the database.
- * @param {string} weekStartDate -
+ * Add shifts for a given week.
+ * @param {string} weekId - The ID of the week (e.g., "week_2024-12-16").
+ * @param {string} weekStartDate - Start date of the week ("YYYY-MM-DD").
  */
-async function addWeek(weekStartDate) {
-  const weekId = `week_${weekStartDate}`;
-  const weekData = {
-    start_date: weekStartDate,
-    end_date: moment(weekStartDate).endOf("isoWeek").format("YYYY-MM-DD"),
-    is_closed: false, // New week is open by default
-    is_active: true, // Active by default
-    status: "open",
-    created_by: "system",
-    created_at: moment().toISOString(),
-    updated_at: moment().toISOString(),
-  };
+async function addShifts(weekId, weekStartDate) {
+  const startDate = moment(weekStartDate, "YYYY-MM-DD");
 
-  await db.ref(`weeks/${weekId}`).set(weekData);
-  console.log(`Added week: ${weekId}`);
-  return weekData; // Return the week data for local updates
-}
+  for (let i = 0; i < 7; i++) {
+    const shiftDate = startDate.clone().add(i, "days");
+    const dayName = DAYS_OF_WEEK[i];
+    const status = dayName ===
+    "saturday" ? "closed" : "active"; // Close shifts on Saturdays
 
-/**
- * Close the specified number of oldest open weeks.
- * @param {Object} weeks - All current weeks.
- * @param {number} weeksToClose - Number of weeks to close.
- */
-async function closeOldestOpenWeeks(weeks, weeksToClose) {
-  // Convert weeks object to an array and sort by start_date ascending
-  const sortedWeeks = Object.values(weeks)
-      .sort((a, b) => moment(a.start_date).diff(moment(b.start_date)));
+    const shiftId = `shift_${shiftDate.format("YYYY-MM-DD")}`;
+    const shiftData = {
+      assigned_workers: 0,
+      date: shiftDate.format("YYYY-MM-DD"),
+      max_workers: 0, // Default to 0; update manually
+      status: status,
+      week_id: weekId,
+    };
 
-  let closedCount = 0;
-
-  for (const week of sortedWeeks) {
-    if (!week.is_closed && closedCount < weeksToClose) {
-      const weekId = `week_${week.start_date}`;
-      await db.ref(`weeks/${weekId}/is_closed`).set(true);
-      await db.ref(`weeks/${weekId}/status`).set("closed");
-      await db.ref(`weeks/${weekId}/updated_at`).set(moment().toISOString());
-      console.log(`Closed week: ${weekId}`);
-      closedCount++;
-    }
-
-    if (closedCount >= weeksToClose) break;
-  }
-
-  if (closedCount < weeksToClose) {
-    console.log(`Only ${closedCount} open week(s) were closed.`);
+    await db.ref(`shifts/${shiftId}`).set(shiftData);
+    console.log(`Added shift: ${shiftId}`);
   }
 }
 
 /**
- * Remove old weeks, keeping only the latest WEEKS_TO_KEEP weeks.
+ * Remove old weeks and associated shifts.
  * @param {Object} weeks - All current weeks.
  * @param {number} weeksToKeep - Number of weeks to keep.
  */
-async function removeOldWeeks(weeks, weeksToKeep) {
+async function removeOldWeeksAndShifts(weeks, weeksToKeep) {
   const weekKeys = Object.keys(weeks);
 
   // Sort weeks by start_date ascending
@@ -94,8 +57,20 @@ async function removeOldWeeks(weeks, weeksToKeep) {
   const weeksToDelete = weekKeys.slice(0, weekKeys.length - weeksToKeep);
 
   for (const weekKey of weeksToDelete) {
+    // Remove week and associated shifts
     await db.ref(`weeks/${weekKey}`).remove();
     console.log(`Removed week: ${weekKey}`);
+
+    const weekStartDate = weeks[weekKey].start_date;
+    const startDate = moment(weekStartDate, "YYYY-MM-DD");
+
+    for (let i = 0; i < 7; i++) {
+      const shiftDate = startDate.clone().add(i, "days").format("YYYY-MM-DD");
+      const shiftId = `shift_${shiftDate}`;
+
+      await db.ref(`shifts/${shiftId}`).remove();
+      console.log(`Removed shift: ${shiftId}`);
+    }
   }
 
   if (weeksToDelete.length === 0) {
@@ -104,64 +79,85 @@ async function removeOldWeeks(weeks, weeksToKeep) {
 }
 
 /**
- * Cloud Function to manage weeks in the database.
- * - Adds new weeks to reach WEEKS_TO_KEEP.
- * - Closes the two oldest open weeks.
- * - Removes old weeks to maintain exactly seven weeks.
+ * Cloud Function to manage weeks and shifts.
  */
-exports.manageWeeks = functions.pubsub
+exports.manageWeeksAndShifts = functions.pubsub
     .schedule("59 23 * * 0") // Every Sunday at 23:59
-    .timeZone(TIMEZONE) // Adjust to your time zone
+    .timeZone(TIMEZONE)
     .onRun(async () => {
-      console.log("Starting week management process...");
-
       try {
-        // Step 1: Fetch current weeks from the database
-        const weeks = await getCurrentWeeks();
+        const weeksSnapshot = await db.ref("weeks").once("value");
+        const weeks = weeksSnapshot.val() || {};
         const weekKeys = Object.keys(weeks);
         console.log(`Fetched ${weekKeys.length} week(s) from the database.`);
 
-        // Step 2: Determine how many weeks need to be added
-        let weeksToAdd = WEEKS_TO_KEEP - weekKeys.length;
-        if (weeksToAdd <= 0) weeksToAdd = 0;
-
+        // Calculate weeks to add
+        const weeksToAdd = WEEKS_TO_KEEP - weekKeys.length;
+        const startWeek = moment().startOf("isoWeek");
         console.log(`Weeks to add: ${weeksToAdd}`);
 
-        // Step 3: Initialize startWeek to the current week
-        const startWeek = moment().startOf("isoWeek");
-        console.log(`Starting from current week:
-        ${startWeek.format("YYYY-MM-DD")}`);
-
-        // Step 4: Add missing weeks
         for (let i = 0; i < weeksToAdd; i++) {
-          const weekStartDate = startWeek.format("YYYY-MM-DD");
+          const weekStartDate =
+          startWeek.clone().add(i, "weeks").format("YYYY-MM-DD");
+          const weekId = `week_${weekStartDate}`;
 
-          // Check if the week already exists
-          const weekExists = Object.values(weeks).some(
-              (week) => week.start_date === weekStartDate);
+          // Add week to database
+          const weekData = {
+            start_date: weekStartDate,
+            end_date: startWeek.clone().endOf("isoWeek").format("YYYY-MM-DD"),
+            is_closed: false,
+            is_active: true,
+            status: "open",
+            created_by: "system",
+            created_at: moment().toISOString(),
+            updated_at: moment().toISOString(),
+          };
 
-          if (!weekExists) {
-            const newWeekData = await addWeek(weekStartDate);
-            weeks[`week_${weekStartDate}`] = newWeekData;
-            console.log(`Added week: ${weekStartDate}`);
-          } else {
-            console.log(`Week starting on ${weekStartDate}
-            already exists. Skipping addition.`);
-          }
+          await db.ref(`weeks/${weekId}`).set(weekData);
+          console.log(`Added week: ${weekId}`);
 
-          startWeek.add(1, "weeks"); // Move to the next week
+          // Add shifts for the new week
+          await addShifts(weekId, weekStartDate);
         }
 
-        // Step 5: Close the oldest two open weeks
-        await closeOldestOpenWeeks(weeks, WEEKS_TO_CLOSE);
+        // Remove old weeks and shifts to maintain exactly WEEKS_TO_KEEP weeks
+        await removeOldWeeksAndShifts(weeks, WEEKS_TO_KEEP);
 
-        // Step 6: Remove old weeks to maintain exactly WEEKS_TO_KEEP weeks
-        await removeOldWeeks(weeks, WEEKS_TO_KEEP);
-
-        console.log("Week management process completed successfully.");
-        return null;
+        console.log("Week and shift management completed successfully.");
       } catch (error) {
-        console.error("Error during week management process:", error);
-        return null;
+        console.error("Error managing weeks and shifts:", error);
       }
     });
+
+/**
+ * HTTP Function to update the status of a shift.
+ */
+exports.updateShiftStatus = functions.https.onRequest(async (req, res) => {
+  const {shiftId, status} = req.body;
+
+  if (!shiftId || !status) {
+    return res.status(400).send("Missing required parameters:" +
+    "shiftId or status.");
+  }
+
+  try {
+    const shiftRef = db.ref(`shifts/${shiftId}`);
+    const shiftSnapshot = await shiftRef.once("value");
+
+    if (!shiftSnapshot.exists()) {
+      return res.status(404).send(`Shift with ID ${shiftId} not found.`);
+    }
+
+    await shiftRef.update({
+      status: status,
+      updated_at: moment().toISOString(),
+    });
+
+    console.log(`Updated shift ${shiftId} to status: ${status}`);
+    return res.status(200).send(`Shift
+    ${shiftId} updated to status: ${status}`);
+  } catch (error) {
+    console.error("Error updating shift status:", error);
+    return res.status(500).send("Internal Server Error.");
+  }
+});

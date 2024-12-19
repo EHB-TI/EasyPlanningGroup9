@@ -71,6 +71,8 @@ function ManagerTabs() {
   );
 }
 
+
+
 export default function App() {
   return (
     <NavigationContainer>
