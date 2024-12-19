@@ -1,173 +1,119 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Entypo } from '@expo/vector-icons';
-import { getDatabase, ref, get, child } from 'firebase/database'; // Import Firebase Realtime Database
-import { db } from '../firebaseConfig'; // Firebase configuratie
- 
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, StatusBar, SafeAreaView } from 'react-native';
+import { getDatabase, ref, get, child } from 'firebase/database';
+
 export default function ManagerHome({ navigation }) {
-  const [pendingCount, setPendingCount] = useState(0); // Pending gebruikersaantal
-  const [approvedCount, setApprovedCount] = useState(0); // Approved gebruikersaantal
- 
+  const [pendingCount, setPendingCount] = useState(0);
+
   const handleNavigate = (screen) => {
     navigation.navigate(screen);
   };
- 
+
   useEffect(() => {
-    // Functie om pending users uit de Realtime Database op te halen
     const fetchPendingUsers = async () => {
       try {
-        const dbRef = ref(getDatabase()); // Realtime Database referentie
-        const snapshot = await get(child(dbRef, 'users')); // Haal de 'users' node op
- 
+        const dbRef = ref(getDatabase());
+        const snapshot = await get(child(dbRef, 'users'));
+
         if (snapshot.exists()) {
           const usersData = snapshot.val();
-          // Filter gebruikers met status 'pending'
           const pendingUsers = Object.values(usersData).filter(user => user.status === 'pending');
-          setPendingCount(pendingUsers.length); // Aantal pending users bijwerken
+          setPendingCount(pendingUsers.length);
         } else {
-          console.log('No pending users found.');
           setPendingCount(0);
         }
       } catch (error) {
         console.error('Error fetching pending users:', error);
       }
     };
- 
+
     fetchPendingUsers();
   }, []);
- 
- 
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeContainer}>
+      <StatusBar barStyle="light-content" backgroundColor="#F5F5F5" />
       <Text style={styles.header}>Manager Dashboard</Text>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Overview Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('UserPanel')}
-          >
-            <Text style={styles.cardText}>Pending account validation</Text>
-            {/* hier wordt pending users getoond */}
+          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('UserPanel')}>
+            <Text style={styles.cardText}>Pending Account Validation</Text>
             <Text style={styles.cardNumber}>{pendingCount}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('ShiftRequestScreen')}
-          >
-            <Text style={styles.cardText}>Pending shift request</Text>
+          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ShiftRequestScreen')}>
+            <Text style={styles.cardText}>Pending Shift Requests</Text>
             <Text style={styles.cardNumber}>2</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('ProductivityScreen')}
-          >
-            <Text style={styles.cardText}>Update productivity</Text>
+          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ProductivityScreen')}>
+            <Text style={styles.cardText}>Update Productivity</Text>
           </TouchableOpacity>
         </View>
- 
-        {/* Quick Action Section */}
+
+        {/* Quick Actions Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick action</Text>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('UserPanel')}
-          >
-            <Text style={styles.cardText}>Validate account</Text>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('UserPanel')}>
+            <Text style={styles.cardText}>Validate Accounts</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => handleNavigate('UserPanel')}
-          >
-            <Text style={styles.cardText}>Admin panel</Text>
+          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('AdminPanel')}>
+            <Text style={styles.cardText}>Admin Panel</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ManageShiftRequestScreen')}>
-            <Text style={styles.cardText}>Manage shift request</Text>
+            <Text style={styles.cardText}>Manage Shift Requests</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-             style={styles.card}
-             onPress={() => navigation.navigate('AddWorkersNeededScreen')}
-           >
-            <Text style={styles.cardText}>Add workers needed</Text>
+          <TouchableOpacity style={styles.card} onPress={() => handleNavigate('AddWorkersNeededScreen')}>
+            <Text style={styles.cardText}>Add Workers Needed</Text>
           </TouchableOpacity>
         </View>
- 
-        {/* Notification Section */}
+
+        {/* Notifications Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notification</Text>
-          <TouchableOpacity
-            style={styles.notification}
-            onPress={() => handleNavigate('ShiftRequestDetailsScreen')}
-          >
-            <Text style={styles.cardText}>New Shift request</Text>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          <TouchableOpacity style={styles.notification} onPress={() => handleNavigate('ShiftRequestDetailsScreen')}>
+            <Text style={styles.cardText}>New Shift Request</Text>
             <Text style={styles.cardDetail}>Yassine</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.notification}
-            onPress={() => handleNavigate('ShiftCancelationDetailsScreen')}
-          >
-            <Text style={styles.cardText}>Shift cancelation</Text>
+          <TouchableOpacity style={styles.notification} onPress={() => handleNavigate('ShiftCancelationDetailsScreen')}>
+            <Text style={styles.cardText}>Shift Cancelation</Text>
             <Text style={styles.cardDetail}>Patrick</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
- 
-      {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('HomeScreen')}
-        >
-          <Entypo name="home" size={24} color="black" />
-          <Text style={styles.navItemText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('CalendarScreen')}
-        >
-          <Entypo name="calendar" size={24} color="black" />
-          <Text style={styles.navItemText}>Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('MoreScreen')}
-        >
-          <Entypo name="dots-three-horizontal" size={24} color="black" />
-          <Text style={styles.navItemText}>More</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
- 
+
 const styles = StyleSheet.create({
-  container: {
+  safeContainer: {
     flex: 1,
-    backgroundColor: '#E8F9F9',
+    backgroundColor: "#F5F5F5",
   },
   scrollContent: {
     padding: 16,
   },
   header: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#23C882',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
+    marginTop: 20,
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     marginBottom: 12,
+    color: '#444',
   },
   card: {
     backgroundColor: '#FFFFFF',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -175,48 +121,34 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 5,
+    elevation: 3,
   },
   cardText: {
     fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
   },
   cardNumber: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#555',
+    color: '#23C882',
   },
   notification: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 5,
+    elevation: 3,
   },
   cardDetail: {
-    color: '#555',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#DDD',
-    backgroundColor: '#FFFFFF',
-  },
-  navItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  navItemText: {
-    fontSize: 16,
-    color: '#23C882',
-    marginTop: 4,
+    fontSize: 14,
+    color: '#666',
   },
 });
