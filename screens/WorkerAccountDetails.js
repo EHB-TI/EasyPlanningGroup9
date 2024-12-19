@@ -1,131 +1,173 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, StatusBar, SafeAreaView } from "react-native";
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  StatusBar,
+  SafeAreaView,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { getDatabase, ref, get, update } from "firebase/database";
+import { getAuth } from "firebase/auth";
 
- 
 export default function AccountDetails({ navigation }) {
   const [user, setUser] = useState({
-    firstName: "Lucas",
-    lastName: "Huygen",
-    phone: "+0032478965412",
-    email: "naam@mail.com",
-    fixedDays: "maandag, dinsdag...",
-    hours: "20"
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+    fixedDays: "",
   });
   const [isEditing, setIsEditing] = useState(false);
- 
-  const firstLetter = user.firstName.charAt(0).toUpperCase(); // Récupérer la première lettre en majuscule
- 
-  const handleNavigateToAccount = () => {
-    navigation.navigate('WorkerAccountDetails', { user });
-  };
 
-  const handleNavigateBack = () => {
-    navigation.navigate('WorkerHome');
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+  const database = getDatabase();
+
+  useEffect(() => {
+    if (currentUser) {
+      const userId = currentUser.uid;
+      fetchUser(userId);
+    }
+  }, [currentUser]);
+
+  const fetchUser = async (userId) => {
+    try {
+      const userRef = ref(database, `users/${userId}`);
+      const snapshot = await get(userRef);
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        setUser({
+          firstName: userData.firstName || "",
+          lastName: userData.lastName || "",
+          phone: userData.phone || "Niet gespecificeerd",
+          email: userData.email || "Niet gespecificeerd",
+          fixedDays: userData.fixDay || "Niet gespecificeerd", // Note : Correction pour utiliser fixDay
+        });
+      } else {
+        console.log("Utilisateur introuvable dans la base de données.");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des données utilisateur :", error);
+    }
   };
 
   const handleEdit = () => {
     setIsEditing(!isEditing);
+    if (isEditing && currentUser) {
+      updateUser();
+    }
   };
- 
+
+  const updateUser = async () => {
+    try {
+      const userId = currentUser.uid;
+      const userRef = ref(database, `users/${userId}`);
+      await update(userRef, {
+        phone: user.phone,
+        fixDay: user.fixedDays, // Mise à jour de fixDay
+      });
+      console.log("Les données utilisateur ont été mises à jour.");
+    } catch (error) {
+      console.error("Erreur lors de la mise à jour des données utilisateur :", error);
+    }
+  };
+
   const handleChange = (field, value) => {
     setUser({ ...user, [field]: value });
   };
- 
+
+  const handleNavigateBack = () => {
+    navigation.navigate("WorkerHome");
+  };
+
+  const firstLetter = user.firstName.charAt(0).toUpperCase();
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <StatusBar barStyle="light-content" backgroundColor="#F5F5F5" />
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.headerContainer}>
-      <TouchableOpacity onPress={handleNavigateBack}>
-        <Ionicons name="arrow-back" size={24} color="#2D4535" />
-      </TouchableOpacity>
-        <View>
-          <Text style={styles.header}>Account Details</Text>
-          <Text style={styles.subHeader}>Contract Type: soort type</Text>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity onPress={handleNavigateBack}>
+            <Ionicons name="arrow-back" size={24} color="#2D4535" />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.header}>Account Details</Text>
+            <Text style={styles.subHeader}>Contract Type: {user.contract || "Niet gespecificeerd"}</Text>
+          </View>
+          <TouchableOpacity style={styles.profileIcon}>
+            <Text style={styles.profileInitial}>{firstLetter}</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.profileIcon} onPress={handleNavigateToAccount}>
-          <Text style={styles.profileInitial}>{firstLetter}</Text>
-        </TouchableOpacity>
-      </View>
- 
-      <View style={styles.whitecontainer}>
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, isEditing && styles.editLabel]}>Voornaam:</Text>
-          <TextInput
-            style={styles.input}
-            value={user.firstName}
-            editable={isEditing}
-            onChangeText={(text) => handleChange("firstName", text)}
-          />
+
+        <View style={styles.whitecontainer}>
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, isEditing && styles.editLabel]}>Voornaam:</Text>
+            <TextInput
+              style={styles.input}
+              value={user.firstName}
+              editable={isEditing}
+              onChangeText={(text) => handleChange("firstName", text)}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, isEditing && styles.editLabel]}>Achternaam:</Text>
+            <TextInput
+              style={styles.input}
+              value={user.lastName}
+              editable={isEditing}
+              onChangeText={(text) => handleChange("lastName", text)}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, isEditing && styles.editLabel]}>GSM:</Text>
+            <TextInput
+              style={styles.input}
+              value={user.phone.toString()} // Convertir en chaîne si c'est un entier
+              editable={isEditing}
+              onChangeText={(text) => handleChange("phone", text)}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, isEditing && styles.editLabel]}>E-mail:</Text>
+            <TextInput
+              style={styles.input}
+              value={user.email}
+              editable={isEditing}
+              onChangeText={(text) => handleChange("email", text)}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, isEditing && styles.editLabel]}>Vaste Dagen:</Text>
+            <TextInput
+              style={styles.input}
+              value={user.fixedDays}
+              editable={isEditing}
+              onChangeText={(text) => handleChange("fixedDays", text)}
+            />
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={handleEdit}>
+            <Text style={styles.buttonText}>{isEditing ? "Accepteren" : "Wijzig gegevens"}</Text>
+          </TouchableOpacity>
         </View>
- 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, isEditing && styles.editLabel]}>Achternaam:</Text>
-          <TextInput
-            style={styles.input}
-            value={user.lastName}
-            editable={isEditing}
-            onChangeText={(text) => handleChange("lastName", text)}
-          />
-        </View>
- 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, isEditing && styles.editLabel]}>GSM:</Text>
-          <TextInput
-            style={styles.input}
-            value={user.phone}
-            editable={isEditing}
-            onChangeText={(text) => handleChange("phone", text)}
-          />
-        </View>
- 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, isEditing && styles.editLabel]}>E-mail:</Text>
-          <TextInput
-            style={styles.input}
-            value={user.email}
-            editable={isEditing}
-            onChangeText={(text) => handleChange("email", text)}
-          />
-        </View>
- 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, isEditing && styles.editLabel]}>Vaste Dagen:</Text>
-          <TextInput
-            style={styles.input}
-            value={user.fixedDays}
-            editable={isEditing}
-            onChangeText={(text) => handleChange("fixedDays", text)}
-          />
-        </View>
- 
-        <View style={styles.inputContainer}>
-          <Text style={[styles.label, isEditing && styles.editLabel]}>Aantal uren:</Text>
-          <TextInput
-            style={styles.input}
-            value={user.hours}
-            editable={isEditing}
-            onChangeText={(text) => handleChange("hours", text)}
-          />
-        </View>
- 
-        <TouchableOpacity style={styles.button} onPress={handleEdit}>
-          <Text style={styles.buttonText}>{isEditing ? "Accepteren" : "Wijzig gegevens"}</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
     </SafeAreaView>
-    
   );
 }
- 
+
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
     backgroundColor: "#F5F5F5",
-    
   },
   headerContainer: {
     paddingTop: 50,
@@ -133,7 +175,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 20,
-    
   },
   header: {
     fontSize: 24,
@@ -162,7 +203,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: "#F6F6F6",
     padding: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
@@ -171,8 +212,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     marginBottom: 5,
-        color: "#999999",
- 
+    color: "#999999",
   },
   editLabel: {
     color: "#505050",
@@ -197,7 +237,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 10,
     padding: 30,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
