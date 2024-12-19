@@ -9,33 +9,32 @@ import {
   Alert,
   SafeAreaView,
 } from 'react-native';
-import { db } from '../firebaseConfig'; // Firebase Firestore instance
-import { getDatabase, ref, get, child } from 'firebase/database'; // Import Firebase Realtime Database
+import { getDatabase, ref, get, set, remove, onValue } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
-import { collection, query, where, onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
 
 export default function WorkerHome({ navigation }) {
   const [user, setUser] = useState({ firstName: '', lastName: '' });
   const [shifts, setShifts] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
 
-  const auth = getAuth(); // Initialize Firebase Auth
-  const currentUser = auth.currentUser; // Get the currently authenticated user
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+  const database = getDatabase();
 
   useEffect(() => {
     if (currentUser) {
-      const userId = currentUser.uid; // Retrieve the logged-in user's UID
+      const userId = currentUser.uid;
       fetchUser(userId);
     }
   }, [currentUser]);
 
-  // Fetch user data from Firestore
   const fetchUser = async (userId) => {
     try {
-      const userRef = doc(db, 'users', userId);
-      const userDoc = await getDoc(userRef);
-      if (userDoc.exists()) {
-        setUser(userDoc.data());
+      const userRef = ref(database, `users/${userId}`);
+      const snapshot = await get(userRef);
+      if (snapshot.exists()) {
+        setUser(snapshot.val());
       } else {
         console.log('User does not exist');
       }
@@ -44,25 +43,39 @@ export default function WorkerHome({ navigation }) {
     }
   };
 
-  // Fetch shifts from Firestore
   const fetchShifts = () => {
-    const shiftsRef = collection(db, 'shifts');
-    const shiftsQuery = query(shiftsRef); // No specific filter for now
-
-    const unsubscribe = onSnapshot(shiftsQuery, (snapshot) => {
-      const allShifts = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      setShifts(allShifts);
+    const shiftsRef = ref(database, 'shifts');
+    onValue(shiftsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const shiftsArray = Object.entries(snapshot.val()).map(([id, data]) => ({
+          id,
+          ...data,
+        }));
+        setShifts(shiftsArray);
+      } else {
+        console.log('No shifts available');
+      }
     });
+  };
 
-    return unsubscribe;
+  const fetchApplications = () => {
+    const applicationsRef = ref(database, 'applications');
+    onValue(applicationsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const applicationsArray = Object.entries(snapshot.val()).map(([id, data]) => ({
+          id,
+          ...data,
+        }));
+        setApplications(applicationsArray);
+      } else {
+        console.log('No applications available');
+      }
+    });
   };
 
   useEffect(() => {
-    const unsubscribe = fetchShifts();
-    return () => unsubscribe();
+    fetchShifts();
+    fetchApplications();
   }, []);
 
   const onRefresh = useCallback(() => {
@@ -72,6 +85,7 @@ export default function WorkerHome({ navigation }) {
       fetchUser(userId);
     }
     fetchShifts();
+    fetchApplications();
     setTimeout(() => setRefreshing(false), 1000);
   }, [currentUser]);
 
@@ -81,85 +95,42 @@ export default function WorkerHome({ navigation }) {
     navigation.navigate('WorkerAccountDetails', { user });
   };
 
-  // Cancel a shift
-  const handleCancelShift = async (shiftId) => {
-    Alert.alert(
-      'Shift annuleren',
-      'Weet je zeker dat je deze shift wilt annuleren?',
-      [
-        {
-          text: 'Nee',
-          style: 'cancel',
-        },
-        {
-          text: 'Ja',
-          onPress: async () => {
-            try {
-              const shiftRef = doc(db, 'shifts', shiftId);
-              await updateDoc(shiftRef, { status: 'cancelled' });
-              console.log(`Shift met ID ${shiftId} is geannuleerd.`);
-            } catch (error) {
-              console.error('Fout bij het annuleren van de shift:', error);
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+  const getNextApplicationId = () => {
+    const maxId = applications.reduce((max, application) => {
+      const currentId = parseInt(application.id.split('_')[2], 10);
+      return currentId > max ? currentId : max;
+    }, 0);
+    return `application_id_${maxId + 1}`;
   };
 
-  // Cancel a pending shift
-  const handleCancelPendingShift = async (shiftId) => {
-    Alert.alert(
-      'Aanvraag annuleren',
-      'Weet je zeker dat je deze aanvraag wilt annuleren?',
-      [
-        {
-          text: 'Nee',
-          style: 'cancel',
-        },
-        {
-          text: 'Ja',
-          onPress: async () => {
-            try {
-              const shiftRef = doc(db, 'shifts', shiftId);
-              await updateDoc(shiftRef, {
-                status: 'available',
-                reservedBy: null, // Reset the reservedBy field
-              });
-              Alert.alert('Success', 'De aanvraag is geannuleerd.');
-            } catch (error) {
-              console.error('Fout bij het annuleren van de aanvraag:', error);
-              Alert.alert('Error', 'Er ging iets mis bij het annuleren van de aanvraag.');
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
-  const handleReserveShift = async (shiftId) => {
+  const handleReserveShift = (shiftId) => {
     Alert.alert(
       'Shift reserveren',
-      'Wil je deze shift reserveren?',
+      'Weet je zeker dat je deze shift wilt reserveren?',
       [
         {
-          text: 'Nee',
+          text: 'No',
           style: 'cancel',
         },
         {
-          text: 'Ja',
+          text: 'Yes',
           onPress: async () => {
             try {
-              const shiftRef = doc(db, 'shifts', shiftId);
-              await updateDoc(shiftRef, {
-                status: 'pending', // Set the status to "pending"
-                reservedBy: currentUser.uid, // Save the user who reserved it
-              });
+              const applicationId = getNextApplicationId();
+              const selectedShift = shifts.find((shift) => shift.id === shiftId);
+
+              const applicationData = {
+                application_date: new Date().toISOString(),
+                shift_id: shiftId,
+                status: 'applied',
+                worker_id: currentUser.uid,
+                shift_date: selectedShift.date,
+              };
+
+              await set(ref(database, `applications/${applicationId}`), applicationData);
               Alert.alert('Success', 'Shift is nu in afwachting van goedkeuring.');
             } catch (error) {
-              console.error('Fout bij het reserveren van de shift:', error);
+              console.error('Error reserving shift:', error);
               Alert.alert('Error', 'Er ging iets mis bij het reserveren van de shift.');
             }
           },
@@ -169,8 +140,37 @@ export default function WorkerHome({ navigation }) {
     );
   };
 
-  const plannedShiftsCount = shifts.filter(
-    (shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid
+  const handleCancelPendingShift = (applicationId) => {
+    Alert.alert(
+      'Aanvraag annuleren',
+      'Weet je zeker dat je deze aanvraag wilt annuleren?',
+      [
+        {
+          text: 'No',
+          style: 'cancel',
+        },
+        {
+          text: 'Yes',
+          onPress: async () => {
+            try {
+              const applicationRef = ref(database, `applications/${applicationId}`);
+              await remove(applicationRef);
+              Alert.alert('Success', 'De aanvraag is geannuleerd.');
+            } catch (error) {
+              console.error('Error cancelling application:', error);
+              Alert.alert('Error', 'Er ging iets mis bij het annuleren van de aanvraag.');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Count only validated shifts
+  const plannedShiftsCount = applications.filter(
+    (application) =>
+      application.worker_id === currentUser?.uid && application.status === 'validated'
   ).length;
 
   return (
@@ -179,7 +179,6 @@ export default function WorkerHome({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Header Section */}
         <View style={styles.headerAligned}>
           <Text style={styles.greetingText}>Hallo {user.firstName}</Text>
           <TouchableOpacity style={styles.profileIcon} onPress={handleNavigateToAccount}>
@@ -187,107 +186,95 @@ export default function WorkerHome({ navigation }) {
           </TouchableOpacity>
         </View>
 
-
         <View style={styles.volgendeShiftSection}>
-  <Text style={styles.volgendeShiftTitle}>Volgende shift</Text>
-  {shifts
-    .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
-    .sort((a, b) => a.date.seconds - b.date.seconds)[0] ? (
-    <>
-      <Text style={styles.volgendeShiftText}>
-        {new Date(
-          shifts
-            .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
-            .sort((a, b) => a.date.seconds - b.date.seconds)[0].date.seconds * 1000
-        ).toLocaleDateString('nl-NL')}
-      </Text>
-      <Text style={styles.volgendeShiftText}>
-        Start:{" "}
-        {new Date(
-          shifts
-            .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser?.uid)
-            .sort((a, b) => a.date.seconds - b.date.seconds)[0].date.seconds * 1000
-        ).toLocaleTimeString('nl-NL')}
-      </Text>
-    </>
-  ) : (
-    <Text style={styles.volgendeShiftText}>Geen geplande shift</Text>
-  )}
-</View>
+          <Text style={styles.volgendeShiftTitle}>Volgende shift</Text>
+          {applications
+            .filter(
+              (application) =>
+                application.worker_id === currentUser?.uid && application.status === 'validated'
+            )
+            .sort((a, b) => new Date(a.shift_date) - new Date(b.shift_date))[0] ? (
+            <>
+              <Text style={styles.volgendeShiftText}>
+                {new Date(
+                  applications
+                    .filter(
+                      (application) =>
+                        application.worker_id === currentUser?.uid &&
+                        application.status === 'validated'
+                    )
+                    .sort((a, b) => new Date(a.shift_date) - new Date(b.shift_date))[0].shift_date
+                ).toLocaleDateString('nl-NL')}
+              </Text>
+              <Text style={styles.volgendeShiftText}>
+                Start:{' '}
+                {new Date(
+                  applications
+                    .filter(
+                      (application) =>
+                        application.worker_id === currentUser?.uid &&
+                        application.status === 'validated'
+                    )
+                    .sort((a, b) => new Date(a.shift_date) - new Date(b.shift_date))[0].shift_date
+                ).toLocaleTimeString('nl-NL')}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.volgendeShiftText}>Geen geplande shift</Text>
+          )}
+        </View>
 
-        {/* Aantal Shifts Section */}
         <View style={styles.aantalShiftsSection}>
           <Text style={styles.aantalShiftsTitle}>Aantal shifts</Text>
           <Text style={styles.aantalShiftsCount}>{plannedShiftsCount}</Text>
         </View>
 
-        {/* Pending Shifts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shifts in Afwachting</Text>
-          {shifts
-            .filter((shift) => shift.status === 'pending' && shift.reservedBy === currentUser?.uid)
-            .map((shift) => (
-              <View key={shift.id} style={styles.pendingShift}>
+          {applications
+            .filter(
+              (application) =>
+                application.worker_id === currentUser?.uid && application.status === 'applied'
+            )
+            .map((application) => (
+              <View key={application.id} style={styles.pendingShift}>
                 <View>
-                  <Text style={styles.pendingShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
-                  <Text style={styles.pendingShiftDate}>
-                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  <Text style={styles.pendingShiftDay}>
+                    {new Date(application.shift_date).toLocaleDateString('nl-NL')}
                   </Text>
                   <Text style={styles.pendingShiftTime}>
-                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                    Start: {new Date(application.shift_date).toLocaleTimeString('nl-NL')}
                   </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.cancelPendingButton}
-                  onPress={() => handleCancelPendingShift(shift.id)}
+                  onPress={() => handleCancelPendingShift(application.id)}
                 >
                   <Text style={styles.cancelPendingButtonText}>Annuleren</Text>
                 </TouchableOpacity>
               </View>
             ))}
         </View>
-        
 
-        {/* Planned Shifts Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Geplande Shifts</Text>
-          {shifts
-            .filter((shift) => shift.status === 'reserved' && shift.reservedBy === currentUser.uid)
-            .map((shift) => (
-              <View key={shift.id} style={styles.plannedShift}>
-                <View>
-                  <Text style={styles.plannedShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
-                  <Text style={styles.plannedShiftDate}>
-                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
-                  </Text>
-                  <Text style={styles.plannedShiftTime}>
-                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={() => handleCancelShift(shift.id)}
-                >
-                  <Text style={styles.cancelButtonText}>Annuleren</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-        </View>
-
-        {/* Free Shifts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Beschikbare Shifts</Text>
           {shifts
-            .filter((shift) => shift.status === 'available')
+            .filter(
+              (shift) =>
+                !applications.some(
+                  (application) =>
+                    application.shift_id === shift.id &&
+                    application.worker_id === currentUser?.uid
+                ) && shift.status === 'active'
+            )
             .map((shift) => (
               <View key={shift.id} style={styles.freeShift}>
                 <View>
-                  <Text style={styles.freeShiftDay}>{shift.day || 'Geen dag opgegeven'}</Text>
-                  <Text style={styles.freeShiftDate}>
-                    {new Date(shift.date.seconds * 1000).toLocaleDateString('nl-NL')}
+                  <Text style={styles.freeShiftDay}>
+                    {new Date(shift.date).toLocaleDateString('nl-NL')}
                   </Text>
                   <Text style={styles.freeShiftTime}>
-                    Start: {new Date(shift.date.seconds * 1000).toLocaleTimeString('nl-NL')}
+                    Start: {new Date(shift.date).toLocaleTimeString('nl-NL')}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -361,7 +348,6 @@ const styles = StyleSheet.create({
     color: '#333',
     textAlign: 'center',
   },
-  
   aantalShiftsSection: {
     backgroundColor: '#4CAF50',
     padding: 12,
@@ -406,25 +392,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   cancelPendingButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-  plannedShift: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  cancelButton: {
-    backgroundColor: '#FF5722',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-  },
-  cancelButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
   },
