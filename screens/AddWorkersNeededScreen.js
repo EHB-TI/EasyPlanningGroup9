@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Alert, TextInput, Button } from 'react-native';
 import { initializeShifts, fetchShifts, updateShift } from '../services/shifts';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function AddWorkersNeededScreen() {
   const [shifts, setShifts] = useState([]);
@@ -43,7 +44,7 @@ export default function AddWorkersNeededScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Add Workers Needed</Text>
       <FlatList
         data={shifts.filter((shift) => shift.status === 'available')}
@@ -90,7 +91,7 @@ export default function AddWorkersNeededScreen() {
         }}
         ListEmptyComponent={<Text>No shifts available.</Text>}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

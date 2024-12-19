@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
-import { getDatabase, ref, get, child } from 'firebase/database'; // Import Firebase Realtime Database
-import { db } from '../firebaseConfig'; // Firebase configuratie
+// Import Firebase functions
+
+
+
 
 export default function ManagerHome({ navigation }) {
   const [pendingCount, setPendingCount] = useState(0); // Pending gebruikersaantal
@@ -38,7 +40,7 @@ export default function ManagerHome({ navigation }) {
   
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <Text style={styles.header}>Manager Dashboard</Text>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Overview Section */}
@@ -114,30 +116,8 @@ export default function ManagerHome({ navigation }) {
       </ScrollView>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('HomeScreen')}
-        >
-          <Entypo name="home" size={24} color="black" />
-          <Text style={styles.navItemText}>Home</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('CalendarScreen')}
-        >
-          <Entypo name="calendar" size={24} color="black" />
-          <Text style={styles.navItemText}>Calendar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => handleNavigate('MoreScreen')}
-        >
-          <Entypo name="dots-three-horizontal" size={24} color="black" />
-          <Text style={styles.navItemText}>More</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      
+    </SafeAreaView>
   );
 }
 
