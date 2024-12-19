@@ -45,7 +45,7 @@ export default function AccountDetails({ navigation }) {
           lastName: userData.lastName || "",
           phone: userData.phone || "Niet gespecificeerd",
           email: userData.email || "Niet gespecificeerd",
-          fixedDays: userData.fixDay || "Niet gespecificeerd", // Note : Correction pour utiliser fixDay
+          fixedDays: userData.fixDay || "Niet gespecificeerd", 
         });
       } else {
         console.log("Utilisateur introuvable dans la base de données.");
@@ -109,7 +109,6 @@ export default function AccountDetails({ navigation }) {
             <TextInput
               style={styles.input}
               value={user.firstName}
-              editable={isEditing}
               onChangeText={(text) => handleChange("firstName", text)}
             />
           </View>
@@ -119,7 +118,6 @@ export default function AccountDetails({ navigation }) {
             <TextInput
               style={styles.input}
               value={user.lastName}
-              editable={isEditing}
               onChangeText={(text) => handleChange("lastName", text)}
             />
           </View>
@@ -149,7 +147,6 @@ export default function AccountDetails({ navigation }) {
             <TextInput
               style={styles.input}
               value={user.fixedDays}
-              editable={isEditing}
               onChangeText={(text) => handleChange("fixedDays", text)}
             />
           </View>
