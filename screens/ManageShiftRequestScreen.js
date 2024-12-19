@@ -14,7 +14,7 @@ export default function ManageShiftRequestScreen() {
         const groupedShifts = {};
         snapshot.forEach((doc) => {
           const shift = { id: doc.id, ...doc.data() };
-          if (shift.cancelshift) { // Only show shifts where cancelshift is true
+          if (shift.cancelshift) {
             if (!groupedShifts[shift.ContractType]) {
               groupedShifts[shift.ContractType] = [];
             }
@@ -53,31 +53,36 @@ export default function ManageShiftRequestScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Manage Shift Request</Text>
+      <Text style={styles.header}>Manage shift request</Text>
       {Object.keys(shifts).map((contractType) => (
         <View key={contractType} style={styles.section}>
           <Text style={styles.sectionTitle}>{contractType}</Text>
           {shifts[contractType].map((shift) => (
-            <View key={shift.id} style={styles.shiftCard}>
-              <View>
-                <Text style={styles.shiftName}>Worker ID: {shift.WorkerID}</Text>
-                <Text style={styles.shiftDate}>
-                  {new Date(shift.date.toDate()).toLocaleDateString('nl-NL')}
-                </Text>
-              </View>
-              <View style={styles.actions}>
-                <TouchableOpacity
-                  style={styles.acceptButton}
-                  onPress={() => handleAccept(shift.id)}
-                >
-                  <Text style={styles.actionText}>Accept</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.declineButton}
-                  onPress={() => handleDecline(shift.id)}
-                >
-                  <Text style={styles.actionText}>Decline</Text>
-                </TouchableOpacity>
+            <View key={shift.id}>
+              <Text style={styles.dateText}>
+                {new Date(shift.date.toDate()).toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                })}
+              </Text>
+              <View style={styles.shiftCard}>
+                <Text style={styles.shiftName}>{shift.WorkerID}</Text>
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={styles.acceptButton}
+                    onPress={() => handleAccept(shift.id)}
+                  >
+                    <Text style={styles.actionText}>Accept</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.declineButton}
+                    onPress={() => handleDecline(shift.id)}
+                  >
+                    <Text style={styles.actionText}>Decline</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           ))}
@@ -90,12 +95,12 @@ export default function ManageShiftRequestScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#E8F9F9',
+    backgroundColor: '#E7F5FE',
   },
   header: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#23C882',
+    color: '#4CAF50',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -103,15 +108,21 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#555',
-    marginBottom: 12,
+    color: '#444',
+    marginBottom: 8,
+  },
+  dateText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#777',
+    marginBottom: 8,
   },
   shiftCard: {
     backgroundColor: '#FFFFFF',
     padding: 16,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -120,32 +131,40 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   shiftName: {
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  shiftDate: {
-    fontSize: 14,
-    color: '#777',
+    color: '#333',
   },
   actions: {
     flexDirection: 'row',
   },
   acceptButton: {
-    backgroundColor: '#23C882',
-    padding: 10,
-    borderRadius: 8,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     marginRight: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
   },
   declineButton: {
     backgroundColor: '#FF6F61',
-    padding: 10,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
   },
   actionText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
