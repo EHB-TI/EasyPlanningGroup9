@@ -16,7 +16,10 @@ export default function WorkerMijnplanning({ navigation }) {
 
     const days = [];
     for (let i = 0; i < (firstDayIndex === 0 ? 6 : firstDayIndex - 1); i++) {
-      days.push({ day: lastDayPrevMonth - (firstDayIndex === 0 ? 6 : firstDayIndex - 1) + i, isGray: true });
+      days.push({
+        day: lastDayPrevMonth - (firstDayIndex === 0 ? 6 : firstDayIndex - 1) + i,
+        isGray: true,
+      });
     }
     for (let i = 1; i <= daysInMonth; i++) {
       days.push({ day: i });
@@ -61,7 +64,10 @@ export default function WorkerMijnplanning({ navigation }) {
       "Ben je zeker dat je deze shift wilt annuleren?",
       [
         { text: "Non", style: "cancel" },
-        { text: "Oui", onPress: () => console.log(`Shift avec l'ID ${shiftId} a été annulé.`) },
+        {
+          text: "Oui",
+          onPress: () => console.log(`Shift avec l'ID ${shiftId} a été annulé.`),
+        },
       ],
       { cancelable: true }
     );
@@ -131,7 +137,7 @@ export default function WorkerMijnplanning({ navigation }) {
                   item.day === selectedDay && !item.isGray && styles.selectedText,
                 ]}
               >
-                {item.day}
+                {item.day || ""}
               </Text>
             </TouchableOpacity>
           ))}
@@ -182,8 +188,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 10,
     marginBottom: 10,
-    paddingBottom: 0,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -208,8 +213,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "bold",
     color: "#2D4535",
-    flex: 1,
     textAlign: "center",
+    flex: 1,
   },
   daysContainer: {
     flexDirection: "row",
@@ -260,7 +265,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     marginBottom: 10,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,

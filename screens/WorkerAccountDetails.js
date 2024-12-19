@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, StatusBar, SafeAreaView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
  
@@ -33,6 +33,8 @@ export default function AccountDetails({ navigation }) {
   };
  
   return (
+    <SafeAreaView style={styles.safeContainer}>
+      <StatusBar barStyle="light-content" backgroundColor="#F5F5F5" />
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerContainer}>
       <TouchableOpacity onPress={handleNavigateBack}>
@@ -113,6 +115,7 @@ export default function AccountDetails({ navigation }) {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </SafeAreaView>
     
   );
 }
@@ -199,5 +202,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
     elevation: 2,
+  },
+  safeContainer: {
+    flex: 1,
+    backgroundColor: "#2D4535", // Couleur de fond pour correspondre à la barre d'état
   },
 });

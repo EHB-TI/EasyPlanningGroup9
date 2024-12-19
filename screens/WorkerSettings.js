@@ -2,7 +2,12 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function WorkerSettings() {
+export default function WorkerSettings({navigation}) {
+
+  const handleNavigateToWelcomeScreen = () => {
+    navigation.navigate('Welcome');
+  };
+  
   return (
     <View style={styles.container}>
       {/* En-tête avec image et infos utilisateur */}
@@ -17,17 +22,12 @@ export default function WorkerSettings() {
 
       {/* Options de navigation */}
       <View style={styles.options}>
-        <TouchableOpacity style={styles.option} onPress={() => alert('Naviguer vers Mijn contacten')}>
-          <Ionicons name="people-outline" size={24} color="#4CAF50" />
-          <Text style={styles.optionText}>Mijn contacten</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity style={styles.option} onPress={() => alert('Ouvrir les paramètres')}>
           <Ionicons name="settings-outline" size={24} color="#4CAF50" />
           <Text style={styles.optionText}>Settings</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.option} onPress={() => alert('Déconnexion réussie')}>
+        <TouchableOpacity style={styles.option} onPress={handleNavigateToWelcomeScreen}>
           <Ionicons name="log-out-outline" size={24} color="#FF5733" />
           <Text style={[styles.optionText, { color: '#FF5733' }]}>Uitloggen</Text>
         </TouchableOpacity>

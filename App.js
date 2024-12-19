@@ -81,6 +81,7 @@ export default function App() {
         <Stack.Screen name="WorkerAccountDetails" component={WorkerAccountDetails} options={{ headerShown: false }} />
         <Stack.Screen name="WorkerHome" component={WorkerTabs} options={{ headerShown: false }} />
         <Stack.Screen name="ManagerHome" component={ManagerTabs} options={{ headerShown: false }} />
+        <Stack.Screen name="WorkerSettings" component={WorkerSettings} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
