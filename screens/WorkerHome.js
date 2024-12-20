@@ -13,7 +13,7 @@ import { getDatabase, ref, get, set, remove, onValue } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
 export default function WorkerHome({ navigation }) {
-  const [user, setUser] = useState({ firstName: '', lastName: '' });
+  const [user, setUser] = useState({ first_name: '', last_name: '' });
   const [shifts, setShifts] = useState([]);
   const [applications, setApplications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -34,7 +34,9 @@ export default function WorkerHome({ navigation }) {
       const userRef = ref(database, `users/${userId}`);
       const snapshot = await get(userRef);
       if (snapshot.exists()) {
-        setUser(snapshot.val());
+        const userData = snapshot.val();
+        console.log('Fetched User Data:', userData); // Debugging log
+        setUser(userData);
       } else {
         console.log('User does not exist');
       }
@@ -42,6 +44,7 @@ export default function WorkerHome({ navigation }) {
       console.error('Error fetching user data:', error);
     }
   };
+  
 
   const fetchShifts = () => {
     const shiftsRef = ref(database, 'shifts');
@@ -89,11 +92,12 @@ export default function WorkerHome({ navigation }) {
     setTimeout(() => setRefreshing(false), 1000);
   }, [currentUser]);
 
-  const firstLetter = user.firstName.charAt(0).toUpperCase();
+  const firstLetter = user.first_name ? user.first_name.charAt(0).toUpperCase() : '';
 
-  const handleNavigateToAccount = () => {
-    navigation.navigate('WorkerAccountDetails', { user });
-  };
+const handleNavigateToAccount = () => {
+  navigation.navigate('WorkerAccountDetails', { user });
+};
+
 
   const getNextApplicationId = () => {
     const maxId = applications.reduce((max, application) => {

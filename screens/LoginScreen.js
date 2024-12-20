@@ -2,16 +2,15 @@ import React, { useState } from 'react';
 import {
   View,
   TextInput,
-  Button,
   StyleSheet,
   Alert,
   Text,
   TouchableOpacity,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // Import pour l'icône de retour et visibilité
+import { Ionicons } from '@expo/vector-icons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebaseConfig';
+import { getDatabase, ref, get, child } from 'firebase/database'; // Importeer functies voor Realtime Database
+import { auth } from '../firebaseConfig';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -22,11 +21,17 @@ export default function LoginScreen({ navigation }) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-
+  
+      console.log('User UID:', user.uid); // Log de UID voor debugging
+  
+      const db = getDatabase();
+      const userRef = ref(db, `users/${user.uid}`);
+      const snapshot = await get(userRef);
+  
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        console.log('User Data:', userData);
+  
         if (userData.status === 'pending') {
           Alert.alert('Account Pending', 'Your account is awaiting approval from a manager.');
           navigation.navigate('PendingApproval');
@@ -38,9 +43,11 @@ export default function LoginScreen({ navigation }) {
           Alert.alert('Error', 'Invalid role assigned to this account.');
         }
       } else {
-        Alert.alert('Error', 'User data not found.');
+        console.log('User data not found in Realtime Database.');
+        Alert.alert('Error', 'User data not found in Realtime Database.');
       }
     } catch (error) {
+      console.error('Login Error:', error);
       Alert.alert('Login Error', error.message);
     }
   };
@@ -48,7 +55,7 @@ export default function LoginScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.loginBox}>
-        {/* Flèche de retour */}
+        {/* Back Button */}
         <TouchableOpacity
           style={styles.backArrow}
           onPress={() => navigation.navigate('Welcome')}
@@ -110,11 +117,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E7F5FE', // Couleur de fond de la page
+    backgroundColor: '#E7F5FE',
   },
   loginBox: {
     width: '90%',
-    backgroundColor: '#FFFFFF', // Fond blanc pour la boîte
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 20,
     alignItems: 'center',
@@ -132,13 +139,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#4CAF50', // Couleur verte pour le titre
+    color: '#4CAF50',
     marginBottom: 20,
   },
   inputContainer: {
     width: '100%',
     marginBottom: 15,
-    position: 'relative', // Pour placer l'icône dans le champ de mot de passe
+    position: 'relative',
   },
   input: {
     width: '100%',
@@ -159,7 +166,7 @@ const styles = StyleSheet.create({
     top: 13,
   },
   loginButton: {
-    backgroundColor: '#4CAF50', // Couleur verte pour le bouton
+    backgroundColor: '#4CAF50',
     width: '100%',
     paddingVertical: 15,
     borderRadius: 10,

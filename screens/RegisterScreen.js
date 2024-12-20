@@ -27,27 +27,22 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Error', 'All fields are required.');
       return;
     }
-
+  
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match.');
       return;
     }
-
+  
     try {
+      // Create the user in Firebase Authentication
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
+      const user = userCredential.user; // Get the user object from Firebase Auth
+  
       const db = getDatabase();
-      const usersRef = ref(db, 'users');
-
-      const snapshot = await get(usersRef);
-      let userId = 1;
-      if (snapshot.exists()) {
-        const users = snapshot.val();
-        userId = Object.keys(users).length + 1;
-      }
-
-      await set(ref(db, `users/user_id_${userId}`), {
+      const userRef = ref(db, `users/${user.uid}`); // Use the UID as the key in Realtime Database
+  
+      // Save user details in Realtime Database
+      await set(userRef, {
         email,
         first_name: firstName,
         last_name: lastName,
@@ -56,13 +51,14 @@ export default function RegisterScreen({ navigation }) {
         sap_number: 'SAP123456',
         status: 'pending',
       });
-
+  
       Alert.alert('Success', 'Account created successfully!');
-      navigation.navigate('Welcome'); // Retour à la page de bienvenue
+      navigation.navigate('Welcome'); // Navigate to the Welcome screen
     } catch (error) {
       Alert.alert('Error', error.message);
     }
   };
+  
 
   return (
     <View style={styles.container}>
