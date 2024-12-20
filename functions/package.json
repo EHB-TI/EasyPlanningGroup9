@@ -17,9 +17,14 @@
     "moment-timezone": "^0.5.46"
   },
   "devDependencies": {
-    "eslint": "^8.0.0",
+    "eslint": "^8.57.1",
     "eslint-config-google": "^0.14.0",
-    "firebase-functions-test": "^3.0.0"
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "firebase-functions-test": "^3.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "prettier": "^3.4.2"
   },
   "engines": {
     "node": "18"

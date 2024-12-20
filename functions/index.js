@@ -7,8 +7,8 @@ admin.initializeApp();
 const db = admin.database();
 const TIMEZONE = "Europe/Brussels";
 const WEEKS_TO_KEEP = 7;
-const DAYS_OF_WEEK =
-["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const DAYS_OF_WEEK = ["monday",
+  "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
 /**
  * Add shifts for a given week.
@@ -22,7 +22,7 @@ async function addShifts(weekId, weekStartDate) {
     const shiftDate = startDate.clone().add(i, "days");
     const dayName = DAYS_OF_WEEK[i];
     const status = dayName ===
-    "saturday" ? "closed" : "active"; // Close shifts on Saturdays
+      "saturday" ? "closed" : "active"; // Close shifts on Saturdays
 
     const shiftId = `shift_${shiftDate.format("YYYY-MM-DD")}`;
     const shiftData = {
@@ -91,30 +91,86 @@ exports.manageWeeksAndShifts = functions.pubsub
         const weekKeys = Object.keys(weeks);
         console.log(`Fetched ${weekKeys.length} week(s) from the database.`);
 
-        // Calculate weeks to add
+        // Sort weeks by start_date ascending
+        const sortedWeeks = weekKeys
+            .map((key) => ({
+              week_id: key,
+              ...weeks[key],
+            }))
+            .sort((a, b) => moment(a.start_date, "YYYY-MM-DD") -
+               moment(b.start_date, "YYYY-MM-DD"));
+
+        // Update the first two weeks (current week and next week) to "closed"
+        for (let i = 0; i < sortedWeeks.length && i < 2; i++) {
+          const week = sortedWeeks[i];
+          if (week.status !== "closed") {
+            await db.ref(`weeks/${week.week_id}`).update({
+              status: "closed",
+              is_closed: true,
+              is_active: false,
+              updated_at: moment().toISOString(),
+            });
+            console.log(`Updated week ${week.week_id} to status: closed`);
+          }
+        }
+
+        // Calculate weeks to add to maintain WEEKS_TO_KEEP weeks
         const weeksToAdd = WEEKS_TO_KEEP - weekKeys.length;
-        const startWeek = moment().startOf("isoWeek");
+        let lastWeekDate;
+
+        if (sortedWeeks.length > 0) {
+          lastWeekDate = moment(sortedWeeks[sortedWeeks.length -
+             1].start_date, "YYYY-MM-DD");
+          console.log(`Last week start date:
+            ${lastWeekDate.format("YYYY-MM-DD")}`);
+        } else {
+          lastWeekDate = moment().startOf("isoWeek");
+          console.log(`No existing weeks. Starting from current week:
+            ${lastWeekDate.format("YYYY-MM-DD")}`);
+        }
+
+        let startWeek;
+
+        if (weeksToAdd > 0) {
+        // If weeks exist, start adding from the next week
+        // Else, start adding from the current week
+          startWeek = sortedWeeks.length > 0 ?
+          lastWeekDate.clone().add(1, "weeks").startOf("isoWeek") :
+          lastWeekDate.clone();
+        } else {
+          console.log("No weeks to add.");
+        }
+
         console.log(`Weeks to add: ${weeksToAdd}`);
 
         for (let i = 0; i < weeksToAdd; i++) {
-          const weekStartDate =
-          startWeek.clone().add(i, "weeks").format("YYYY-MM-DD");
+          const weekStartDate = startWeek.clone().add(i,
+              "weeks").format("YYYY-MM-DD");
+          const weekEndDate = startWeek.clone().add(i,
+              "weeks").endOf("isoWeek").format("YYYY-MM-DD");
           const weekId = `week_${weekStartDate}`;
+
+          // Determine the status of the week
+          let status = "open"; // Default to open
+          if (i === 0 || i === 1) {
+            status = "closed"; // First two weeks added are closed
+          }
 
           // Add week to database
           const weekData = {
             start_date: weekStartDate,
-            end_date: startWeek.clone().endOf("isoWeek").format("YYYY-MM-DD"),
-            is_closed: false,
-            is_active: true,
-            status: "open",
+            end_date: weekEndDate,
+            is_closed: status === "closed",
+            is_active: status === "open",
+            status: status,
             created_by: "system",
             created_at: moment().toISOString(),
             updated_at: moment().toISOString(),
           };
 
           await db.ref(`weeks/${weekId}`).set(weekData);
-          console.log(`Added week: ${weekId}`);
+          console.log(`Added week: ${weekId} -
+            ${weekStartDate} to ${weekEndDate} with status: ${status}`);
 
           // Add shifts for the new week
           await addShifts(weekId, weekStartDate);
@@ -136,8 +192,8 @@ exports.updateShiftStatus = functions.https.onRequest(async (req, res) => {
   const {shiftId, status} = req.body;
 
   if (!shiftId || !status) {
-    return res.status(400).send("Missing required parameters:" +
-    "shiftId or status.");
+    return res.status(400).send("Missing"+
+    "required parameters: shiftId or status.");
   }
 
   try {

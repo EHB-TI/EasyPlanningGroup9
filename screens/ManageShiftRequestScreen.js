@@ -1,93 +1,170 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { collection, query, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+// screens/ManageShiftRequestScreen.js
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
+  FlatList,
+} from "react-native";
+import { ref, onValue, update } from "firebase/database";
+import { realtimeDB } from "../firebaseConfig";
 
-export default function ManageShiftRequestScreen() {
-  const [shifts, setShifts] = useState({});
+export default function ManageShiftRequestScreen({ route, navigation }) {
+  // Destructure with default values to prevent undefined errors
+  const { shiftId = null, selectedDate = 'N/A', maxWorkers = 0 } = route.params || {};
 
-  // Fetch shifts from Firestore
+  const [applications, setApplications] = useState([]);
+  const [currentAssignedWorkers, setCurrentAssignedWorkers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const fetchShifts = async () => {
-      const shiftsQuery = query(collection(db, 'yourshift'));
-      const unsubscribe = onSnapshot(shiftsQuery, (snapshot) => {
-        const groupedShifts = {};
-        snapshot.forEach((doc) => {
-          const shift = { id: doc.id, ...doc.data() };
-          if (shift.cancelshift) {
-            if (!groupedShifts[shift.ContractType]) {
-              groupedShifts[shift.ContractType] = [];
-            }
-            groupedShifts[shift.ContractType].push(shift);
-          }
-        });
-        setShifts(groupedShifts);
-      });
-      return () => unsubscribe(); // Cleanup subscription
+    if (!shiftId) {
+      Alert.alert("Error", "Shift ID is missing.");
+      navigation.goBack(); // Navigate back if shiftId is not provided
+      return;
+    }
+
+    setLoading(true);
+    const applicationsRef = ref(realtimeDB, "applications");
+    const shiftsRef = ref(realtimeDB, `shifts/${shiftId}`);
+
+    const unsubscribeApplications = onValue(applicationsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const filteredApplications = Object.keys(data)
+        .map((key) => ({ id: key, ...data[key] }))
+        .filter((app) => app.shift_id === shiftId && app.status === "applied");
+      setApplications(filteredApplications);
+    });
+
+    const unsubscribeShifts = onValue(shiftsRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      setCurrentAssignedWorkers(data.assigned_workers || []);
+    });
+
+    setLoading(false);
+
+    return () => {
+      unsubscribeApplications();
+      unsubscribeShifts();
     };
+  }, [shiftId, navigation]);
 
-    fetchShifts();
-  }, []);
+  // Assign a worker
+  const handleAssignWorker = async (application) => {
+    if (currentAssignedWorkers.length >= maxWorkers) {
+      Alert.alert("Limit Reached", "Maximum workers already assigned to this shift.");
+      return;
+    }
 
-  // Handle Accept Shift
-  const handleAccept = async (shiftId) => {
+    const newAssignedWorkers = [...currentAssignedWorkers, application.worker_id];
+
     try {
-      const shiftRef = doc(db, 'yourshift', shiftId);
-      await deleteDoc(shiftRef); // Delete the shift from Firestore
-      Alert.alert('Success', 'Shift request accepted.');
+      const updates = {
+        [`shifts/${shiftId}/assigned_workers`]: newAssignedWorkers,
+        [`applications/${application.id}/status`]: "approved",
+      };
+
+      await update(ref(realtimeDB), updates);
+
+      setCurrentAssignedWorkers(newAssignedWorkers);
+      setApplications((prev) =>
+        prev.filter((app) => app.id !== application.id)
+      );
+
+      Alert.alert("Success", "Worker assigned successfully.");
     } catch (error) {
-      Alert.alert('Error', 'Failed to accept shift request.');
+      console.error(error);
+      Alert.alert("Error", "Failed to assign worker.");
     }
   };
 
-  // Handle Decline Shift
-  const handleDecline = async (shiftId) => {
+  // Remove a worker
+  const handleRemoveWorker = async (workerId) => {
+    const updatedAssignedWorkers = currentAssignedWorkers.filter(
+      (id) => id !== workerId
+    );
+
     try {
-      const shiftRef = doc(db, 'yourshift', shiftId);
-      await updateDoc(shiftRef, { cancelshift: false }); // Update cancelshift to false
-      Alert.alert('Success', 'Shift request declined.');
+      const updates = {
+        [`shifts/${shiftId}/assigned_workers`]: updatedAssignedWorkers,
+      };
+
+      await update(ref(realtimeDB), updates);
+
+      setCurrentAssignedWorkers(updatedAssignedWorkers);
+
+      Alert.alert("Success", "Worker removed successfully.");
     } catch (error) {
-      Alert.alert('Error', 'Failed to decline shift request.');
+      console.error(error);
+      Alert.alert("Error", "Failed to remove worker.");
     }
   };
+
+  const renderApplication = ({ item }) => (
+    <View style={styles.workerCard}>
+      <Text style={styles.workerName}>Worker: {item.worker_id}</Text>
+      <Text style={styles.workerStatus}>Status: {item.status}</Text>
+      <TouchableOpacity
+        style={styles.assignButton}
+        onPress={() => handleAssignWorker(item)}
+      >
+        <Text style={styles.assignButtonText}>Assign</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const renderAssignedWorker = ({ item }) => (
+    <View style={styles.workerCard}>
+      <Text style={styles.workerName}>Worker: {item}</Text>
+      <TouchableOpacity
+        style={styles.removeButton}
+        onPress={() => handleRemoveWorker(item)}
+      >
+        <Text style={styles.removeButtonText}>Remove</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#23C882" />
+        <Text style={styles.loadingText}>Loading data...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Manage shift request</Text>
-      {Object.keys(shifts).map((contractType) => (
-        <View key={contractType} style={styles.section}>
-          <Text style={styles.sectionTitle}>{contractType}</Text>
-          {shifts[contractType].map((shift) => (
-            <View key={shift.id}>
-              <Text style={styles.dateText}>
-                {new Date(shift.date.toDate()).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
-              </Text>
-              <View style={styles.shiftCard}>
-                <Text style={styles.shiftName}>{shift.WorkerID}</Text>
-                <View style={styles.actions}>
-                  <TouchableOpacity
-                    style={styles.acceptButton}
-                    onPress={() => handleAccept(shift.id)}
-                  >
-                    <Text style={styles.actionText}>Accept</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.declineButton}
-                    onPress={() => handleDecline(shift.id)}
-                  >
-                    <Text style={styles.actionText}>Decline</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      ))}
+      <Text style={styles.header}>Manage Shift for {selectedDate}</Text>
+
+      <Text style={styles.subHeader}>Assigned Workers</Text>
+      {currentAssignedWorkers.length > 0 ? (
+        <FlatList
+          data={currentAssignedWorkers}
+          renderItem={renderAssignedWorker}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.workerList}
+        />
+      ) : (
+        <Text style={styles.noDataText}>No workers assigned yet.</Text>
+      )}
+
+      <Text style={styles.subHeader}>Applications</Text>
+      {applications.length > 0 ? (
+        <FlatList
+          data={applications}
+          renderItem={renderApplication}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.workerList}
+        />
+      ) : (
+        <Text style={styles.noDataText}>No applications available.</Text>
+      )}
     </ScrollView>
   );
 }
@@ -95,76 +172,84 @@ export default function ManageShiftRequestScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    backgroundColor: '#E7F5FE',
+    backgroundColor: "#F5F5F5",
+    flexGrow: 1,
   },
   header: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-    textAlign: 'center',
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#23C882",
+    textAlign: "center",
     marginBottom: 20,
   },
-  section: {
-    marginBottom: 24,
+  subHeader: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#555",
+    marginTop: 20,
+    marginBottom: 10,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#444',
-    marginBottom: 8,
-  },
-  dateText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#777',
-    marginBottom: 8,
-  },
-  shiftCard: {
-    backgroundColor: '#FFFFFF',
+  workerCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
     marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    elevation: 3,
+    elevation: 2,
   },
-  shiftName: {
+  workerName: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
-  actions: {
-    flexDirection: 'row',
+  workerStatus: {
+    fontSize: 14,
+    color: "#777",
   },
-  acceptButton: {
-    backgroundColor: '#4CAF50',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginRight: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
+  assignButton: {
+    backgroundColor: "#23C882",
+    padding: 8,
+    borderRadius: 8,
   },
-  declineButton: {
-    backgroundColor: '#FF6F61',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
+  assignButtonText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "bold",
   },
-  actionText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    textAlign: 'center',
+  removeButton: {
+    backgroundColor: "#E74C3C",
+    padding: 8,
+    borderRadius: 8,
+  },
+  removeButtonText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  noDataText: {
+    fontSize: 16,
+    color: "#777",
+    textAlign: "center",
+    marginVertical: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: "#777",
+    marginTop: 10,
+  },
+  workerList: {
+    paddingBottom: 20,
   },
 });

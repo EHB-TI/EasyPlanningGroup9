@@ -1,8 +1,12 @@
+// App.js
+
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
+
+// Import all your screens
 import WelcomeScreen from './screens/WelcomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
@@ -14,10 +18,12 @@ import ManageShiftRequestScreen from './screens/ManageShiftRequestScreen';
 import AddWorkersNeededScreen from './screens/AddWorkersNeededScreen';
 import WorkerAccountDetails from './screens/WorkerAccountDetails';
 import UserPanel from './screens/UserPanel';
+import ApplicationsScreen from "./screens/ApplicationsScreen"; // Newly added screen
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
+// Worker Tab Navigator
 function WorkerTabs() {
   return (
     <Tab.Navigator
@@ -45,6 +51,7 @@ function WorkerTabs() {
   );
 }
 
+// Manager Tab Navigator
 function ManagerTabs() {
   return (
     <Tab.Navigator
@@ -72,20 +79,29 @@ function ManagerTabs() {
   );
 }
 
-
-
 export default function App() {
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Welcome">
+        {/* Authentication and Registration Screens */}
         <Stack.Screen name="Welcome" component={WelcomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
+
+        {/* Worker Screens */}
         <Stack.Screen name="WorkerAccountDetails" component={WorkerAccountDetails} options={{ headerShown: false }} />
         <Stack.Screen name="WorkerHome" component={WorkerTabs} options={{ headerShown: false }} />
+
+        {/* Manager Screens */}
         <Stack.Screen name="ManagerHome" component={ManagerTabs} options={{ headerShown: false }} />
         <Stack.Screen name="WorkerSettings" component={WorkerSettings} options={{ headerShown: false }} />
         <Stack.Screen name="UserPanel" component={UserPanel} options={{ headerShown: false }} />
+
+        {/* Newly added ApplicationsScreen */}
+        <Stack.Screen name="ApplicationsScreen" component={ApplicationsScreen} options={{ headerShown: false }} />
+
+        {/* Future Screens */}
+        {/* <Stack.Screen name="MakePlanningScreen" component={MakePlanningScreen} options={{ headerShown: false }} /> */}
       </Stack.Navigator>
     </NavigationContainer>
   );
