@@ -57,39 +57,56 @@ const AdminPanelScreen = () => {
     try {
       const db = getDatabase();
   
-      // Update user status
       const userRef = ref(db, `users/${user.id}`);
-      await update(userRef, { status: 'approved' });
   
-      // Determine next worker ID
-      const workersRef = ref(db, 'workers');
-      const workersSnapshot = await get(workersRef);
+      if (role === 'manager') {
+        // Update role to manager
+        await update(userRef, {
+          status: 'approved',
+          role: 'manager',
+        });
   
-      let nextWorkerId = 1;
-      if (workersSnapshot.exists()) {
-        const workersData = workersSnapshot.val();
-        nextWorkerId = Object.keys(workersData).length + 1;
+        Alert.alert('Success', `${user.first_name} has been approved as a manager.`);
+      } else if (role === 'worker') {
+        // For workers, create a worker entry
+        const workersRef = ref(db, 'workers');
+        const workersSnapshot = await get(workersRef);
+  
+        let nextWorkerId = 1;
+        if (workersSnapshot.exists()) {
+          const workersData = workersSnapshot.val();
+          nextWorkerId = Object.keys(workersData).length + 1;
+        }
+  
+        const workerData = {
+          user_id: user.id,
+          contract_type: contractType,
+          fixed_days: fixDay,
+          ...(contractType === 'Student' && { max_hours_week: parseInt(maxHoursWeek, 10) }),
+        };
+  
+        const newWorkerRef = ref(db, `workers/worker_id_${nextWorkerId}`);
+        await set(newWorkerRef, workerData);
+  
+        // Update user role in the database
+        await update(userRef, {
+          status: 'approved',
+          role: 'worker',
+        });
+  
+        Alert.alert('Success', `${user.first_name} has been approved as a worker.`);
+      } else {
+        Alert.alert('Error', 'Please select a role before approving.');
+        return;
       }
   
-      // Prepare worker data
-      const workerData = {
-        user_id: user.id,
-        contract_type: contractType,
-        fixed_days: fixDay, // Use fixDay as an object
-        ...(contractType === 'Student' && { max_hours_week: parseInt(maxHoursWeek, 10) }),
-      };
-  
-      // Save new worker
-      const newWorkerRef = ref(db, `workers/worker_id_${nextWorkerId}`);
-      await set(newWorkerRef, workerData);
-  
-      Alert.alert('Success', `User ${user.first_name} has been approved as a worker.`);
       fetchUsers(); // Refresh data
     } catch (error) {
       console.error('Error approving user:', error);
       Alert.alert('Error', 'Failed to approve the user.');
     }
   };
+  
   
   // Update fixDay when text is entered
   <TextInput
@@ -380,64 +397,63 @@ const AdminPanelScreen = () => {
           </Text>
           <Text style={styles.pendingUserDetails}>Email: {item.email}</Text>
           <Text style={styles.pendingUserDetails}>Phone: {item.phone}</Text>
-          
-          {/* Rol Kiezen */}
-          <Text style={styles.label}>Select Role:</Text>
+  
+          {/* Role Selection */}
+          <Text style={{ marginTop: 10 }}>Select Role:</Text>
           <Picker
             selectedValue={role}
             style={styles.picker}
-            onValueChange={(itemValue) => {
-              setRole(itemValue);
-              setContractType(''); // Reset contractType wanneer de rol verandert
-            }}
+            onValueChange={(value) => setRole(value)}
           >
             <Picker.Item label="Select Role" value="" />
             <Picker.Item label="Manager" value="manager" />
             <Picker.Item label="Worker" value="worker" />
           </Picker>
   
-          {/* Contract Type Kiezen (alleen als rol 'worker' is) */}
+          {/* Conditional display for contract type if Worker is selected */}
           {role === 'worker' && (
             <>
-              <Text style={styles.label}>Select Contract Type:</Text>
+              <Text style={{ marginTop: 10 }}>Select Contract Type:</Text>
               <Picker
                 selectedValue={contractType}
                 style={styles.picker}
-                onValueChange={(itemValue) => setContractType(itemValue)}
+                onValueChange={(value) => setContractType(value)}
               >
                 <Picker.Item label="Select Contract Type" value="" />
                 <Picker.Item label="CDI" value="CDI" />
                 <Picker.Item label="CDD" value="CDD" />
                 <Picker.Item label="Student" value="Student" />
               </Picker>
+  
+              {/* Conditional display for Fixed Days */}
+              <TextInput
+                placeholder="Fixed Days (e.g., Monday, Wednesday)"
+                style={styles.input}
+                onChangeText={(text) => {
+                  const daysArray = text.split(',').map((day) => day.trim());
+                  const daysObject = daysArray.reduce((acc, day) => {
+                    acc[day] = true;
+                    return acc;
+                  }, {});
+                  setFixDay(daysObject);
+                }}
+                editable={contractType !== 'Manager'}
+              />
+  
+              {/* Conditional display for Max Hours if Student is selected */}
+              {contractType === 'Student' && (
+                <TextInput
+                  placeholder="Max Hours per Week"
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={maxHoursWeek}
+                  onChangeText={setMaxHoursWeek}
+                />
+              )}
             </>
           )}
   
-          {/* Vaste Dagen */}
-          <TextInput
-            placeholder="Fixed Days (e.g., Monday, Wednesday)"
-            style={styles.input}
-            onChangeText={(text) => {
-              const daysArray = text.split(',').map((day) => day.trim());
-              const daysObject = daysArray.reduce((acc, day) => {
-                acc[day] = true;
-                return acc;
-              }, {});
-              setFixDay(daysObject);
-            }}
-          />
-  
-          {/* Max Uren per Week (Alleen voor Studenten) */}
-          {contractType === 'Student' && (
-            <TextInput
-              placeholder="Max Hours per Week"
-              style={styles.input}
-              keyboardType="numeric"
-              value={maxHoursWeek}
-              onChangeText={setMaxHoursWeek}
-            />
-          )}
-  
+          {/* Approve Button */}
           <TouchableOpacity
             style={styles.originalApproveButton}
             onPress={() => handleApproveUser(item)}
@@ -448,14 +464,23 @@ const AdminPanelScreen = () => {
       );
     }
   
+    // Render other sections
     return (
       <View style={styles.userContainer}>
-        <Text style={styles.userName}>{item.first_name} {item.last_name}</Text>
+        <Text style={styles.userName}>
+          {item.first_name} {item.last_name}
+        </Text>
         <Text style={styles.userDetails}>Email: {item.email}</Text>
         <Text style={styles.userDetails}>Role: {item.role || 'N/A'}</Text>
       </View>
     );
   };
+  
+  
+  
+  
+    
+  
   
   
   
