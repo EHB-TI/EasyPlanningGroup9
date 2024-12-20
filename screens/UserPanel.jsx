@@ -38,6 +38,7 @@ const AdminPanelScreen = () => {
   const [role, setRole] = useState(''); // geselecteerde rol
   const [contractType, setContractType] = useState(''); // geselecteerd contracttype
   const [phone, setPhone] = useState(''); // telefoonnummer invoer
+  const [maxHoursWeek, setMaxHoursWeek] = useState('');
   
   // Mogelijke rollen en contracten (keuzelijsten)
   const roleOptions = ['manager', 'worker', '']; // rollen
@@ -379,35 +380,64 @@ const AdminPanelScreen = () => {
           </Text>
           <Text style={styles.pendingUserDetails}>Email: {item.email}</Text>
           <Text style={styles.pendingUserDetails}>Phone: {item.phone}</Text>
-          <View style={styles.contractContainer}>
+          
+          {/* Rol Kiezen */}
+          <Text style={styles.label}>Select Role:</Text>
+          <Picker
+            selectedValue={role}
+            style={styles.picker}
+            onValueChange={(itemValue) => {
+              setRole(itemValue);
+              setContractType(''); // Reset contractType wanneer de rol verandert
+            }}
+          >
+            <Picker.Item label="Select Role" value="" />
+            <Picker.Item label="Manager" value="manager" />
+            <Picker.Item label="Worker" value="worker" />
+          </Picker>
+  
+          {/* Contract Type Kiezen (alleen als rol 'worker' is) */}
+          {role === 'worker' && (
+            <>
+              <Text style={styles.label}>Select Contract Type:</Text>
+              <Picker
+                selectedValue={contractType}
+                style={styles.picker}
+                onValueChange={(itemValue) => setContractType(itemValue)}
+              >
+                <Picker.Item label="Select Contract Type" value="" />
+                <Picker.Item label="CDI" value="CDI" />
+                <Picker.Item label="CDD" value="CDD" />
+                <Picker.Item label="Student" value="Student" />
+              </Picker>
+            </>
+          )}
+  
+          {/* Vaste Dagen */}
+          <TextInput
+            placeholder="Fixed Days (e.g., Monday, Wednesday)"
+            style={styles.input}
+            onChangeText={(text) => {
+              const daysArray = text.split(',').map((day) => day.trim());
+              const daysObject = daysArray.reduce((acc, day) => {
+                acc[day] = true;
+                return acc;
+              }, {});
+              setFixDay(daysObject);
+            }}
+          />
+  
+          {/* Max Uren per Week (Alleen voor Studenten) */}
+          {contractType === 'Student' && (
             <TextInput
-              placeholder="Contract Type (e.g., CDI, Student)"
+              placeholder="Max Hours per Week"
               style={styles.input}
-              value={contractType}
-              onChangeText={setContractType}
+              keyboardType="numeric"
+              value={maxHoursWeek}
+              onChangeText={setMaxHoursWeek}
             />
-            <TextInput
-  placeholder="Fixed Days (e.g., Monday, Wednesday)"
-  style={styles.input}
-  onChangeText={(text) => {
-    const daysArray = text.split(',').map((day) => day.trim());
-    const daysObject = daysArray.reduce((acc, day) => {
-      acc[day] = true;
-      return acc;
-    }, {});
-    setFixDay(daysObject); // Correctly update the fixedDays state
-  }}
-/>
-            {contractType === 'Student' && (
-              <TextInput
-                placeholder="Max Hours per Week"
-                style={styles.input}
-                keyboardType="numeric"
-                value={maxHoursWeek}
-                onChangeText={setMaxHoursWeek}
-              />
-            )}
-          </View>
+          )}
+  
           <TouchableOpacity
             style={styles.originalApproveButton}
             onPress={() => handleApproveUser(item)}
@@ -426,6 +456,8 @@ const AdminPanelScreen = () => {
       </View>
     );
   };
+  
+  
   
 
   const renderSectionHeader = ({ section }) => (
@@ -736,8 +768,18 @@ const styles = StyleSheet.create({
   },
   picker: {
     backgroundColor: '#fff',
-    marginBottom: 10,
     borderRadius: 5,
+    marginTop: 5,
+    marginBottom: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginTop: 10,
+    color: '#333',
   },
   searchInput: {
     backgroundColor: '#fff',
