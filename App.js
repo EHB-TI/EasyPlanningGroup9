@@ -1,5 +1,5 @@
 // App.js
-
+import 'react-native-get-random-values';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -18,7 +18,9 @@ import ManageShiftRequestScreen from './screens/ManageShiftRequestScreen';
 import AddWorkersNeededScreen from './screens/AddWorkersNeededScreen';
 import WorkerAccountDetails from './screens/WorkerAccountDetails';
 import UserPanel from './screens/UserPanel';
-import ApplicationsScreen from "./screens/ApplicationsScreen"; // Newly added screen
+import ApplicationsScreen from "./screens/ApplicationsScreen";
+import CreatePlanningScreen from "./screens/CreatePlanningScreen";
+
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -75,6 +77,8 @@ function ManagerTabs() {
       <Tab.Screen name="ManagerHome" component={ManagerHome} options={{ headerShown: false }} />
       <Tab.Screen name="ManageShiftRequestScreen" component={ManageShiftRequestScreen} options={{ headerShown: false }} />
       <Tab.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} options={{ headerShown: false }} />
+      
+
     </Tab.Navigator>
   );
 }
@@ -99,6 +103,11 @@ export default function App() {
 
         {/* Newly added ApplicationsScreen */}
         <Stack.Screen name="ApplicationsScreen" component={ApplicationsScreen} options={{ headerShown: false }} />
+        <Stack.Screen
+        name="CreatePlanningScreen"
+        component={CreatePlanningScreen}
+        options={{ headerShown: false }}
+      />
 
         {/* Future Screens */}
         {/* <Stack.Screen name="MakePlanningScreen" component={MakePlanningScreen} options={{ headerShown: false }} /> */}

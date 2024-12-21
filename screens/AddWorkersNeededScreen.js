@@ -127,7 +127,7 @@ export default function AddWorkersNeededScreen({ navigation }) {
     if (canMakePlanning) {
       console.log("Make Planning button pressed");
       // Navigate to PlanningScreen with selectedWeek
-      navigation.navigate("PlanningScreen", { selectedWeek });
+      navigation.navigate("CreatePlanningScreen", { selectedWeek });
     } else {
       console.log("View Applications button pressed");
       // Navigate to ApplicationsScreen with selectedWeek
