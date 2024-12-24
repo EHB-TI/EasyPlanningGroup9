@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5FAFB',
   },
   headerContainer: {
-    padding: 20,
+    padding: 30,
     backgroundColor: '#4CAF50',
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
@@ -162,6 +162,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 3,
     elevation: 2,
+    justifyContent: 'center'
   },
   actionCardText: {
     fontSize: 16,

@@ -663,48 +663,82 @@ const AdminPanelScreen = () => {
   );
 };
 
-// Stijlen voor de componenten
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f8ff', // lichte achtergrond
+    backgroundColor: '#EAF6F6',
   },
   mainTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     margin: 15,
     textAlign: 'center',
-    color: '#333', // titel tekstkleur
+    color: '#4CAF50',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa', // sectie header achtergrond
+    backgroundColor: '#FFFFFF',
     padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderRadius: 8,
+    marginVertical: 8,
+    marginHorizontal: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333', // sectie titel tekstkleur
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4CAF50',
   },
   toggleText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#00BFA6',
+    color: '#4CAF50',
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 20,
+    marginVertical: 10,
+    marginHorizontal: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#34495E',
+    marginBottom: 10,
+  },
+  cardHighlight: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#27AE60',
   },
   pendingUserContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    margin: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginHorizontal: 15,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 2,
   },
   pendingUserName: {
     fontSize: 16,
     fontWeight: 'bold',
+    color: '#333',
     marginBottom: 5,
   },
   pendingUserDetails: {
@@ -712,110 +746,86 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 10,
   },
-  pendingButtonContainer: {
+  input: {
+    backgroundColor: '#F2F5F7',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#DADFE1',
+  },
+  buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
   },
-  originalApproveButton: {
-    backgroundColor: '#00BFA6',
-    borderRadius: 5,
+  approveButton: {
+    backgroundColor: '#27AE60',
+    borderRadius: 8,
     padding: 10,
     alignItems: 'center',
     flex: 1,
     marginRight: 5,
   },
-  originalRejectButton: {
-    backgroundColor: '#FF5A5F',
-    borderRadius: 5,
+  rejectButton: {
+    backgroundColor: '#E74C3C',
+    borderRadius: 8,
     padding: 10,
     alignItems: 'center',
     flex: 1,
   },
-  userContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    margin: 10,
-    elevation: 2,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  userDetails: {
+  buttonText: {
+    color: '#FFF',
+    fontWeight: '600',
     fontSize: 14,
-    color: '#555',
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)', // halfdoorzichtige achtergrond
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   modalInnerContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     padding: 20,
+    width: '90%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+    color: '#333333',
     textAlign: 'center',
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    padding: 10,
-    marginBottom: 10,
-    borderWidth:1,
-    borderColor:'#ccc'
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    marginBottom: 20,
   },
   picker: {
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    marginTop: 5,
-    marginBottom: 10,
+    backgroundColor: '#F2F5F7',
+    borderRadius: 8,
+    marginBottom: 15,
     padding: 10,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#DADFE1',
   },
-  label: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 10,
-    color: '#333',
+  sectionListContainer: {
+    flex: 1,
+    marginHorizontal: 10,
   },
   searchInput: {
-    backgroundColor: '#fff',
-    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     padding: 10,
     margin: 10,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#DADFE1',
     fontSize: 16,
   },
-  
 });
+
 
 export default AdminPanelScreen;
