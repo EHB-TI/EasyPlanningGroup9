@@ -11,331 +11,102 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-// Picker voor rollen / contracten
 import { Picker } from '@react-native-picker/picker';
-// Veilige weergave voor camera dat text er niet onder gaat
 import { SafeAreaView } from 'react-native-safe-area-context';
-// Firebase functies
-import { collection, getDocs, query, where, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { getDatabase, ref, get, child, update,set } from 'firebase/database'; 
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import {
+  getDatabase,
+  ref,
+  get,
+  child,
+  update,
+  set,
+} from 'firebase/database';
+import { collection, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
-// Functie om een gebruiker goed te keuren
-
 const AdminPanelScreen = () => {
-  // State variabelen (laden, data, etc.)
-  
-  const [searchQuery, setSearchQuery] = useState(''); // Search query input
-  const [filteredSections, setFilteredSections] = useState([]); // Filtered data
-  const [loading, setLoading] = useState(true); // laden gebruikers
-  const [sections, setSections] = useState([]); // secties (pending, approved)
-  const [expandedSections, setExpandedSections] = useState({}); // ingeklapt/uitgeklapt secties
-  const [refreshing, setRefreshing] = useState(false); // verversen lijst
-  const [modalVisible, setModalVisible] = useState(false); // zichtbaarheid approve-modal
-  const [editModalVisible, setEditModalVisible] = useState(false); // zichtbaarheid edit-modal
-  const [selectedUser, setSelectedUser] = useState(null); // geselecteerde gebruiker
-  const [fixDay, setFixDay] = useState({}); // ingevoerde dagen
-  const [role, setRole] = useState(''); // geselecteerde rol
-  const [contractType, setContractType] = useState(''); // geselecteerd contracttype
-  const [phone, setPhone] = useState(''); // telefoonnummer invoer
-  const [maxHoursWeek, setMaxHoursWeek] = useState('');
-  
-  // Mogelijke rollen en contracten (keuzelijsten)
-  const roleOptions = ['manager', 'worker', '']; // rollen
-  const contractOptions = ['CDI', 'CDD', 'Student', '']; // contracten
+  const navigation = useNavigation();
 
-  // Toegestane dagen (lowercase)
-  const allowedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'sunday'];
-  const minDays = 1; // minimum aantal dagen
-  const maxDays = 5; // maximum aantal dagen
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredSections, setFilteredSections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sections, setSections] = useState([]);
+  const [expandedSections, setExpandedSections] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [fixDay, setFixDay] = useState('');
+  const [role, setRole] = useState('');
+  const [contractType, setContractType] = useState('');
+  const [phone, setPhone] = useState('');
+  const [maxHoursWeek, setMaxHoursWeek] = useState('');
+
+  const roleOptions = ['manager', 'worker'];
+  const contractOptions = ['CDI', 'CDD', 'Student'];
 
   useEffect(() => {
-    // Laden van gebruikers data bij montage
     fetchUsers();
   }, []);
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const dbRef = ref(getDatabase());
+      const usersSnapshot = await get(child(dbRef, 'users'));
+      if (usersSnapshot.exists()) {
+        const usersData = usersSnapshot.val();
+        const pendingUsers = Object.entries(usersData)
+          .filter(([id, user]) => user.status === 'pending')
+          .map(([id, user]) => ({ id, ...user }));
+
+        const approvedUsers = Object.entries(usersData)
+          .filter(([id, user]) => user.status === 'approved')
+          .map(([id, user]) => ({ id, ...user }));
+
+        setSections([
+          { title: 'Pending Users', data: pendingUsers },
+          { title: 'Approved Users', data: approvedUsers },
+        ]);
+      }
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      setLoading(false);
+    }
+  };
+
   const handleApproveUser = async (user) => {
     try {
-      const db = getDatabase();
-  
-      const userRef = ref(db, `users/${user.id}`);
-  
-      if (role === 'manager') {
-        // Update role to manager
-        await update(userRef, {
-          status: 'approved',
-          role: 'manager',
-        });
-  
-        Alert.alert('Success', `${user.first_name} has been approved as a manager.`);
-      } else if (role === 'worker') {
-        // For workers, create a worker entry
-        const workersRef = ref(db, 'workers');
-        const workersSnapshot = await get(workersRef);
-  
-        let nextWorkerId = 1;
-        if (workersSnapshot.exists()) {
-          const workersData = workersSnapshot.val();
-          nextWorkerId = Object.keys(workersData).length + 1;
-        }
-  
-        const workerData = {
-          user_id: user.id,
-          contract_type: contractType,
-          fixed_days: fixDay,
-          ...(contractType === 'Student' && { max_hours_week: parseInt(maxHoursWeek, 10) }),
-        };
-  
-        const newWorkerRef = ref(db, `workers/worker_id_${nextWorkerId}`);
-        await set(newWorkerRef, workerData);
-  
-        // Update user role in the database
-        await update(userRef, {
-          status: 'approved',
-          role: 'worker',
-        });
-  
-        Alert.alert('Success', `${user.first_name} has been approved as a worker.`);
-      } else {
-        Alert.alert('Error', 'Please select a role before approving.');
-        return;
-      }
-  
-      fetchUsers(); // Refresh data
+      const dbRef = ref(getDatabase(), `users/${user.id}`);
+      await update(dbRef, { status: 'approved', role });
+      Alert.alert('Success', `${user.first_name} has been approved.`);
+      fetchUsers();
     } catch (error) {
       console.error('Error approving user:', error);
       Alert.alert('Error', 'Failed to approve the user.');
     }
   };
-  
-  
-  // Update fixDay when text is entered
-  <TextInput
-    placeholder="Fixed Days (e.g., Monday, Wednesday)"
-    style={styles.input}
-    onChangeText={(text) => {
-      const daysArray = text.split(',').map((day) => day.trim());
-      const daysObject = daysArray.reduce((acc, day) => {
-        acc[day] = true;
-        return acc;
-      }, {});
-      setFixDay(daysObject); // Update fixDay as an object
-    }}
-  />
-  const fetchUsers = async () => {
-    try {
-      setLoading(true);
-  
-      const dbRef = ref(getDatabase()); // Verwijzing naar de Realtime Database
-  
-      // Haal alle benodigde data op
-      const usersSnapshot = await get(child(dbRef, 'users'));
-      const workersSnapshot = await get(child(dbRef, 'workers'));
-      const contractsSnapshot = await get(child(dbRef, 'contracts'));
-  
-      if (usersSnapshot.exists()) {
-        const usersData = usersSnapshot.val();
-        const workersData = workersSnapshot.exists() ? workersSnapshot.val() : {};
-        const contractsData = contractsSnapshot.exists() ? contractsSnapshot.val() : {};
-  
-        // Pending users verzamelen
-        const pendingUsers = [];
-        const categorizedUsers = {
-          FixedTerm: [],
-          Permanent: [],
-          Student: [],
-        };
-  
-        // Verwerk alle gebruikers
-        Object.entries(usersData).forEach(([userId, user]) => {
-          if (user.status === 'pending') {
-            pendingUsers.push({ id: userId, ...user });
-          } else if (user.status === 'approved') {
-            // Alleen goedgekeurde gebruikers koppelen aan contractinformatie
-            const worker = Object.values(workersData).find((w) => w.user_id === userId);
-            if (worker) {
-              const contract = contractsData[worker.contract_id];
-              if (contract) {
-                const userWithDetails = {
-                  id: userId,
-                  ...user,
-                  contractType: contract.type,
-                  fixedDays: worker.fixed_days || {},
-                  maxHours: worker.max_hours_week,
-                };
-  
-                if (contract.type === 'CDI') {
-                  categorizedUsers.FixedTerm.push(userWithDetails);
-                } else if (contract.type === 'CDD') {
-                  categorizedUsers.Permanent.push(userWithDetails);
-                } else if (contract.type === 'Student') {
-                  categorizedUsers.Student.push(userWithDetails);
-                }
-              }
-            }
-          }
-        });
-  
-        // Stel secties in
-        const sectionsData = [
-          { title: 'Pending Users', data: pendingUsers },
-          { title: 'Fixed Term', data: categorizedUsers.FixedTerm },
-          { title: 'Permanent - Term', data: categorizedUsers.Permanent },
-          { title: 'Student', data: categorizedUsers.Student },
-        ];
-  
-        setSections(sectionsData);
-  
-        // Stel de standaardsecties uitklapstatus in
-        const initialExpandedState = {};
-        sectionsData.forEach((section) => {
-          initialExpandedState[section.title] = true;
-        });
-        setExpandedSections(initialExpandedState);
-      } else {
-        console.log('No user data found in the database.');
-      }
-  
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching users from the Realtime Database:', error);
-      setLoading(false);
-    }
-  };
-  
-  const handleSearch = (query) => {
-    const lowerCaseQuery = query.toLowerCase();
-  
-    if (!query) {
-      setFilteredSections(sections); // Reset to original data if query is empty
-      return;
-    }
-  
-    const newFilteredSections = sections.map((section) => {
-      const filteredData = section.data.filter((user) =>
-        Object.values(user).some((value) =>
-          value.toString().toLowerCase().includes(lowerCaseQuery)
-        )
-      );
-  
-      return { ...section, data: filteredData };
-    });
-  
-    setFilteredSections(newFilteredSections.filter((section) => section.data.length > 0));
-  };
-  
-  
-
-  const onRefresh = async () => {
-    // Refresh-lijst
-    setRefreshing(true);
-    await fetchUsers();
-    setRefreshing(false);
-  };
-
-  const toggleSection = (title) => {
-    // Uitklappen/inklapppen sectie
-    setExpandedSections((prevState) => ({
-      ...prevState,
-      [title]: !prevState[title],
-    }));
-  };
-
-  const normalizeDay = (dayString) => {
-    // Normaliseren dag (trim, lowercase)
-    const trimmed = dayString.trim();
-    const lower = trimmed.toLowerCase();
-    return { original: trimmed, normalized: lower };
-  };
-
-  const validateFixDay = () => {
-    // Validatie ingevoerde dagen
-    const parts = fixDay.split(',').map(p => p.trim()).filter(Boolean);
-
-    const normalizedDays = [];
-    for (let p of parts) {
-      const { original, normalized } = normalizeDay(p);
-
-      // Check of dag toegestaan is
-      if (!allowedDays.includes(normalized)) {
-        Alert.alert(
-          'Invalid Day',
-          `De ingevoerde dag "${original}" wordt niet herkend.\n\nKies uit: ${allowedDays.join(', ')}`
-        );
-        return false;
-      }
-
-      // Check of dag lowercase is
-      if (original !== normalized) {
-        Alert.alert(
-          'Incorrect Format',
-          `De ingevoerde dag "${original}" moet in lowercase. Gebruik "${normalized}".`
-        );
-        return false;
-      }
-
-      normalizedDays.push(normalized);
-    }
-
-    // Check min/max aantal dagen
-    const uniqueDays = Array.from(new Set(normalizedDays));
-    if (uniqueDays.length < minDays || uniqueDays.length > maxDays) {
-      Alert.alert(
-        'Invalid Number of Days',
-        `Voer tussen ${minDays} en ${maxDays} verschillende toegestane dagen in.`
-      );
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleApprove = async () => {
-    // Gebruiker goedkeuren
-    if (!fixDay || !role || !contractType || !phone) {
-      Alert.alert('Error', 'Vul alle velden in.');
-      return;
-    }
-
-    if (!validateFixDay()) return;
-
-    try {
-      const userRef = doc(db, 'users', selectedUser.id);
-
-      await updateDoc(userRef, {
-        status: 'approved',
-        fixDay,
-        role,
-        contract: contractType,
-        phone,
-      });
-
-      Alert.alert('Success', `${selectedUser.firstName} is goedgekeurd.`);
-      setModalVisible(false);
-      clearFormFields();
-      await fetchUsers(); // Data verversen
-    } catch (error) {
-      console.error('Fout bij goedkeuren gebruiker:', error);
-    }
-  };
 
   const handleDeleteUser = async (user) => {
-    // Gebruiker verwijderen
     Alert.alert(
-      'Bevestig Verwijderen',
-      `Weet je zeker dat je ${user.first_Name} ${user.last_Name} wilt verwijderen?`,
+      'Confirm Delete',
+      `Are you sure you want to delete ${user.first_name} ${user.last_name}?`,
       [
-        { text: 'Annuleer', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Verwijderen',
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
               const userRef = doc(db, 'users', user.id);
               await deleteDoc(userRef);
-              Alert.alert('Verwijderd', `${user.firstName} is verwijderd.`);
-              await fetchUsers(); // Data vernieuwen
+              Alert.alert('Deleted', `${user.first_name} has been deleted.`);
+              fetchUsers();
             } catch (error) {
-              console.error('Fout bij verwijderen gebruiker:', error);
+              console.error('Error deleting user:', error);
             }
           },
         },
@@ -343,119 +114,48 @@ const AdminPanelScreen = () => {
     );
   };
 
-  const handleEditUser = (user) => {
-    // Modal openen om gebruiker aan te passen
-    setSelectedUser(user);
-    setFixDay(user.fixDay || '');
-    setRole(user.role || '');
-    setContractType(user.contract || '');
-    setPhone(user.phone || '');
-    setEditModalVisible(true);
-  };
-
-  const handleUpdateUser = async () => {
-    // Gebruiker updaten
-    if (!fixDay || !role || !contractType || !phone) {
-      Alert.alert('Error', 'Vul alle velden in.');
+  const handleSearch = (query) => {
+    const lowerCaseQuery = query.toLowerCase();
+    if (!query) {
+      setFilteredSections(sections);
       return;
     }
-
-    if (!validateFixDay()) return;
-
-    try {
-      const userRef = doc(db, 'users', selectedUser.id);
-      await updateDoc(userRef, {
-        role,
-        contract: contractType,
-        phone,
-        fixDay,
-      });
-      Alert.alert('Success', `${selectedUser.firstName} is bijgewerkt.`);
-      setEditModalVisible(false);
-      clearFormFields();
-      await fetchUsers();
-    } catch (error) {
-      console.error('Fout bij updaten gebruiker:', error);
-    }
+    const newFilteredSections = sections.map((section) => {
+      const filteredData = section.data.filter((user) =>
+        Object.values(user).some((value) =>
+          value.toString().toLowerCase().includes(lowerCaseQuery)
+        )
+      );
+      return { ...section, data: filteredData };
+    });
+    setFilteredSections(newFilteredSections.filter((section) => section.data.length > 0));
   };
 
-  const clearFormFields = () => {
-    //  leegmaken
-    setFixDay('');
-    setRole('');
-    setContractType('');
-    setPhone('');
-    setSelectedUser(null);
+  const toggleSection = (title) => {
+    setExpandedSections((prevState) => ({
+      ...prevState,
+      [title]: !prevState[title],
+    }));
   };
 
   const renderItem = ({ item, section }) => {
     if (section.title === 'Pending Users') {
       return (
-        <View style={styles.pendingUserContainer}>
-          <Text style={styles.pendingUserName}>
-            {item.first_name} {item.last_name}
-          </Text>
-          <Text style={styles.pendingUserDetails}>Email: {item.email}</Text>
-          <Text style={styles.pendingUserDetails}>Phone: {item.phone}</Text>
-  
-          {/* Role Selection */}
-          <Text style={{ marginTop: 10 }}>Select Role:</Text>
+        <View style={styles.userCard}>
+          <Text style={styles.userName}>{item.first_name} {item.last_name}</Text>
+          <Text style={styles.userEmail}>Email: {item.email}</Text>
           <Picker
             selectedValue={role}
             style={styles.picker}
             onValueChange={(value) => setRole(value)}
           >
             <Picker.Item label="Select Role" value="" />
-            <Picker.Item label="Manager" value="manager" />
-            <Picker.Item label="Worker" value="worker" />
+            {roleOptions.map((r, index) => (
+              <Picker.Item key={index} label={r} value={r} />
+            ))}
           </Picker>
-  
-          {/* Conditional display for contract type if Worker is selected */}
-          {role === 'worker' && (
-            <>
-              <Text style={{ marginTop: 10 }}>Select Contract Type:</Text>
-              <Picker
-                selectedValue={contractType}
-                style={styles.picker}
-                onValueChange={(value) => setContractType(value)}
-              >
-                <Picker.Item label="Select Contract Type" value="" />
-                <Picker.Item label="CDI" value="CDI" />
-                <Picker.Item label="CDD" value="CDD" />
-                <Picker.Item label="Student" value="Student" />
-              </Picker>
-  
-              {/* Conditional display for Fixed Days */}
-              <TextInput
-                placeholder="Fixed Days (e.g., Monday, Wednesday)"
-                style={styles.input}
-                onChangeText={(text) => {
-                  const daysArray = text.split(',').map((day) => day.trim());
-                  const daysObject = daysArray.reduce((acc, day) => {
-                    acc[day] = true;
-                    return acc;
-                  }, {});
-                  setFixDay(daysObject);
-                }}
-                editable={contractType !== 'Manager'}
-              />
-  
-              {/* Conditional display for Max Hours if Student is selected */}
-              {contractType === 'Student' && (
-                <TextInput
-                  placeholder="Max Hours per Week"
-                  style={styles.input}
-                  keyboardType="numeric"
-                  value={maxHoursWeek}
-                  onChangeText={setMaxHoursWeek}
-                />
-              )}
-            </>
-          )}
-  
-          {/* Approve Button */}
           <TouchableOpacity
-            style={styles.originalApproveButton}
+            style={styles.approveButton}
             onPress={() => handleApproveUser(item)}
           >
             <Text style={styles.buttonText}>Approve</Text>
@@ -463,43 +163,30 @@ const AdminPanelScreen = () => {
         </View>
       );
     }
-  
-    // Render other sections
     return (
-      <View style={styles.userContainer}>
-        <Text style={styles.userName}>
-          {item.first_name} {item.last_name}
-        </Text>
-        <Text style={styles.userDetails}>Email: {item.email}</Text>
-        <Text style={styles.userDetails}>Role: {item.role || 'N/A'}</Text>
+      <View style={styles.userCard}>
+        <Text style={styles.userName}>{item.first_name} {item.last_name}</Text>
+        <Text style={styles.userEmail}>Email: {item.email}</Text>
+        <Text style={styles.userRole}>Role: {item.role}</Text>
       </View>
     );
   };
-  
-  
-  
-  
-    
-  
-  
-  
-  
 
   const renderSectionHeader = ({ section }) => (
-    // Sectie kop weergave met toggle
     <TouchableOpacity
       style={styles.sectionHeader}
       onPress={() => toggleSection(section.title)}
     >
       <Text style={styles.sectionTitle}>{section.title}</Text>
-      <Text style={styles.toggleText}>
-        {expandedSections[section.title] ? '-' : '+'}
-      </Text>
+      <Ionicons
+        name={expandedSections[section.title] ? 'chevron-up' : 'chevron-down'}
+        size={20}
+        color="#333"
+      />
     </TouchableOpacity>
   );
 
   if (loading) {
-    // refresh
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#00BFA6" />
@@ -508,158 +195,37 @@ const AdminPanelScreen = () => {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Titel bovenaan */}
-      <Text style={styles.mainTitle}>User Panel</Text>
-       {/* Search Bar */}
-    <TextInput
-      style={styles.searchInput}
-      placeholder="Search users..."
-      value={searchQuery}
-      onChangeText={(text) => {
-        setSearchQuery(text);
-        handleSearch(text);
-      }}
-    />
-      
-      {/* Lijst van gebruikers in secties */}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#333" />
+        </TouchableOpacity>
+        <Text style={styles.mainTitle}>Admin Panel</Text>
+      </View>
+      <TextInput
+        style={styles.searchInput}
+        placeholder="Search users..."
+        value={searchQuery}
+        onChangeText={(text) => {
+          setSearchQuery(text);
+          handleSearch(text);
+        }}
+      />
       <SectionList
-  sections={searchQuery ? filteredSections : sections}
-  keyExtractor={(item) => item.id}
-  renderItem={({ item, section }) =>
-    expandedSections[section.title] ? renderItem({ item, section }) : null
-  }
-  renderSectionHeader={renderSectionHeader}
-  stickySectionHeadersEnabled
-  refreshControl={
-    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-  }
-/>
-
-
-      {/* Approve Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalInnerContainer}>
-            <Text style={styles.modalTitle}>Approve User</Text>
-            <TextInput
-              placeholder={`Fix Days (${minDays}-${maxDays} uit ${allowedDays.join(', ')})`}
-              style={styles.input}
-              value={fixDay}
-              onChangeText={(text) => setFixDay(text)}
-            />
-
-            <Text style={{fontWeight:'bold', marginTop:20}}>Select Role:</Text>
-            <Picker
-              selectedValue={role}
-              style={styles.picker}
-              onValueChange={(itemValue) => setRole(itemValue)}
-            >
-              {roleOptions.map((r, index) => (
-                <Picker.Item key={index} label={r || "Select Role"} value={r} />
-              ))}
-            </Picker>
-
-            <Text style={{fontWeight:'bold', marginTop:20}}>Select Contract Type:</Text>
-            <Picker
-              selectedValue={contractType}
-              style={styles.picker}
-              onValueChange={(itemValue) => setContractType(itemValue)}
-            >
-              {contractOptions.map((c, index) => (
-                <Picker.Item key={index} label={c || "Select Contract Type"} value={c} />
-              ))}
-            </Picker>
-
-            <TextInput
-              placeholder="Phone number"
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.originalApproveButton}
-                onPress={handleApprove}
-              >
-                <Text style={styles.buttonText}>Confirm</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.originalRejectButton}
-                onPress={() => {
-                  setModalVisible(false);
-                  clearFormFields();
-                }}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Edit Modal */}
-      <Modal visible={editModalVisible} animationType="slide" transparent>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalInnerContainer}>
-            <Text style={styles.modalTitle}>Edit User</Text>
-
-            <TextInput
-              placeholder={`Fix Days (${minDays}-${maxDays} uit ${allowedDays.join(', ')})`}
-              style={styles.input}
-              value={fixDay}
-              onChangeText={setFixDay}
-            />
-
-            <Text style={{fontWeight:'bold', marginTop:20}}>Select Role:</Text>
-            <Picker
-              selectedValue={role}
-              style={styles.picker}
-              onValueChange={(itemValue) => setRole(itemValue)}
-            >
-              {roleOptions.map((r, index) => (
-                <Picker.Item key={index} label={r || "Select Role"} value={r} />
-              ))}
-            </Picker>
-
-            <Text style={{fontWeight:'bold', marginTop:20}}>Select Contract Type:</Text>
-            <Picker
-              selectedValue={contractType}
-              style={styles.picker}
-              onValueChange={(itemValue) => setContractType(itemValue)}
-            >
-              {contractOptions.map((c, index) => (
-                <Picker.Item key={index} label={c || "Select Contract Type"} value={c} />
-              ))}
-            </Picker>
-
-            <TextInput
-              placeholder="Phone number"
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.originalApproveButton}
-                onPress={handleUpdateUser}
-              >
-                <Text style={styles.buttonText}>Update</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.originalRejectButton}
-                onPress={() => {
-                  setEditModalVisible(false);
-                  clearFormFields();
-                }}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
-    </View>
+        sections={searchQuery ? filteredSections : sections}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item, section }) =>
+          expandedSections[section.title] ? renderItem({ item, section }) : null
+        }
+        renderSectionHeader={renderSectionHeader}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={fetchUsers} />
+        }
+      />
+    </SafeAreaView>
   );
 };
 
@@ -668,164 +234,89 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#EAF6F6',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  backButton: {
+    marginRight: 10,
+  },
   mainTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
-    margin: 15,
-    textAlign: 'center',
-    color: '#4CAF50',
+    color: '#333',
+  },
+  searchInput: {
+    margin: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#DADFE1',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    padding: 15,
+    padding: 10,
+    backgroundColor: '#F2F5F7',
     borderRadius: 8,
-    marginVertical: 8,
     marginHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    marginTop: 10,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#4CAF50',
+    color: '#333',
   },
-  toggleText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-  card: {
+  userCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 20,
-    marginVertical: 10,
-    marginHorizontal: 15,
+    borderRadius: 8,
+    padding: 15,
+    margin: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#34495E',
-    marginBottom: 10,
-  },
-  cardHighlight: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#27AE60',
-  },
-  pendingUserContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    marginHorizontal: 15,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  pendingUserName: {
+  userName: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-    marginBottom: 5,
   },
-  pendingUserDetails: {
+  userEmail: {
     fontSize: 14,
     color: '#555',
-    marginBottom: 10,
   },
-  input: {
+  userRole: {
+    fontSize: 14,
+    color: '#777',
+  },
+  picker: {
+    marginVertical: 10,
     backgroundColor: '#F2F5F7',
     borderRadius: 8,
     padding: 10,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#DADFE1',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
   },
   approveButton: {
     backgroundColor: '#27AE60',
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
-    flex: 1,
-    marginRight: 5,
-  },
-  rejectButton: {
-    backgroundColor: '#E74C3C',
-    borderRadius: 8,
-    padding: 10,
-    alignItems: 'center',
-    flex: 1,
   },
   buttonText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 14,
   },
-  modalContainer: {
+  loadingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-  },
-  modalInnerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 20,
-    width: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333333',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  picker: {
-    backgroundColor: '#F2F5F7',
-    borderRadius: 8,
-    marginBottom: 15,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#DADFE1',
-  },
-  sectionListContainer: {
-    flex: 1,
-    marginHorizontal: 10,
-  },
-  searchInput: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 10,
-    margin: 10,
-    borderWidth: 1,
-    borderColor: '#DADFE1',
-    fontSize: 16,
   },
 });
-
 
 export default AdminPanelScreen;
