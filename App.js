@@ -20,6 +20,8 @@ import WorkerAccountDetails from './screens/WorkerAccountDetails';
 import UserPanel from './screens/UserPanel';
 import ApplicationsScreen from "./screens/ApplicationsScreen";
 import CreatePlanningScreen from "./screens/CreatePlanningScreen";
+import AdminPanel from "./screens/AdminPanel";
+
 
 
 const Stack = createNativeStackNavigator();
@@ -100,6 +102,8 @@ export default function App() {
         <Stack.Screen name="ManagerHome" component={ManagerTabs} options={{ headerShown: false }} />
         <Stack.Screen name="WorkerSettings" component={WorkerSettings} options={{ headerShown: false }} />
         <Stack.Screen name="UserPanel" component={UserPanel} options={{ headerShown: false }} />
+        <Stack.Screen name="AdminPanel" component={AdminPanel} options={{ headerShown: false }} />
+
 
         {/* Newly added ApplicationsScreen */}
         <Stack.Screen name="ApplicationsScreen" component={ApplicationsScreen} options={{ headerShown: false }} />
