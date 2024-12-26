@@ -92,7 +92,7 @@ export default function WorkerHome({ navigation }) {
     setTimeout(() => setRefreshing(false), 1000);
   }, [currentUser]);
 
-  const firstLetter = user.first_name ? user.first_name.charAt(0).toUpperCase() : '';
+  const firstLetter = user.firstName ? user.firstName.charAt(0).toUpperCase() : '';
 
 const handleNavigateToAccount = () => {
   navigation.navigate('WorkerAccountDetails', { user });
