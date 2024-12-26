@@ -1,13 +1,42 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { getAuth } from 'firebase/auth';
+import { getDatabase, ref, get } from 'firebase/database';
 
-export default function WorkerSettings({navigation}) {
+export default function WorkerSettings({ navigation }) {
+  const [user, setUser] = useState({ firstName: '', lastName: '', email: '' });
+
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+  const database = getDatabase();
+
+  useEffect(() => {
+    if (currentUser) {
+      const userId = currentUser.uid;
+      fetchUser(userId);
+    }
+  }, [currentUser]);
+
+  const fetchUser = async (userId) => {
+    try {
+      const userRef = ref(database, `users/${userId}`);
+      const snapshot = await get(userRef);
+      if (snapshot.exists()) {
+        const userData = snapshot.val();
+        setUser(userData);
+      } else {
+        console.log('User does not exist');
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
 
   const handleNavigateToWelcomeScreen = () => {
     navigation.navigate('Welcome');
   };
-  
+
   return (
     <View style={styles.container}>
       {/* En-tête avec image et infos utilisateur */}
@@ -16,8 +45,10 @@ export default function WorkerSettings({navigation}) {
           source={{ uri: 'https://via.placeholder.com/100' }} // Image de profil fictive
           style={styles.profileImage}
         />
-        <Text style={styles.userName}>John Doe</Text>
-        <Text style={styles.userEmail}>johndoe@gmail.com</Text>
+        <Text style={styles.userName}>
+          {user.firstName} {user.lastName}
+        </Text>
+        <Text style={styles.userEmail}>{user.email}</Text>
       </View>
 
       {/* Options de navigation */}
