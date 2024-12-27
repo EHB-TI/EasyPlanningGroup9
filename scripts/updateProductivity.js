@@ -18,22 +18,28 @@ export const handleFileUpload = async () => {
       const data = await response.arrayBuffer();
       const workbook = XLSX.read(data, { type: 'array' });
 
-      // Convert the first sheet into JSON
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
+      // Check if the "productiviteit" sheet exists
+      if (!workbook.SheetNames.includes('productiviteit')) {
+        Alert.alert('Error', 'The sheet "productiviteit" was not found in the file.');
+        console.log('The sheet "productiviteit" was not found.');
+        return;
+      }
+
+      // Convert the "productiviteit" sheet into JSON
+      const sheet = workbook.Sheets['productiviteit'];
       const jsonData = XLSX.utils.sheet_to_json(sheet);
 
-      console.log('Excel Data:', jsonData);
+      console.log('Excel Data from "productiviteit":', jsonData);
 
       // Initialize Firebase Database
       const database = getDatabase();
 
       // Loop through each row in the Excel data
       for (const row of jsonData) {
-        const fullName = row['Naam']; // "NOM PRENOM"
+        const fullName = row['Nom']; // "NOM PRENOM"
         const [lastName, firstName] = fullName.split(' '); // Split into last and first name
-        const productivityYear = row['Gem. 2024']; // Yearly productivity
-        const productivityLast3Months = row['Gem. Laatste 3 maand']; // Last 3 months productivity
+        const productivityYear = row['gem 2024']; // Yearly productivity
+        const productivityLast3Months = row['gem dernière 3 mois']; // Last 3 months productivity
 
         if (firstName && lastName && productivityYear !== undefined && productivityLast3Months !== undefined) {
           try {
