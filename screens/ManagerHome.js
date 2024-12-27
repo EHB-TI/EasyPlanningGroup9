@@ -1,20 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
-import { getDatabase, ref, get, child } from 'firebase/database';
+import { getDatabase, ref, get } from 'firebase/database';
+import { handleFileUpload } from '../scripts/updateProductivity'; // Import the centralized function
 
 export default function ManagerHome({ navigation }) {
   const [pendingCount, setPendingCount] = useState(0);
 
-  const handleNavigate = (screen) => {
-    navigation.navigate(screen);
-  };
+  const database = getDatabase();
 
   useEffect(() => {
+    // Function to fetch pending users
     const fetchPendingUsers = async () => {
       try {
-        const dbRef = ref(getDatabase());
-        const snapshot = await get(child(dbRef, 'users'));
+        const usersRef = ref(database, 'users');
+        const snapshot = await get(usersRef);
 
         if (snapshot.exists()) {
           const usersData = snapshot.val();
@@ -30,6 +30,10 @@ export default function ManagerHome({ navigation }) {
 
     fetchPendingUsers();
   }, []);
+
+  const handleNavigate = (screen) => {
+    navigation.navigate(screen);
+  };
 
   return (
     <View style={styles.container}>
@@ -79,6 +83,14 @@ export default function ManagerHome({ navigation }) {
               <Text style={styles.actionCardText}>Add Workers</Text>
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* File Upload Button */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Productivity Update</Text>
+          <TouchableOpacity style={styles.fileUploadButton} onPress={handleFileUpload}>
+            <Text style={styles.fileUploadButtonText}>Upload Excel File</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -162,12 +174,29 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 3,
     elevation: 2,
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
   actionCardText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-
+  fileUploadButton: {
+    backgroundColor: '#007BFF',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
+    justifyContent: 'center',
+  },
+  fileUploadButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
 });
