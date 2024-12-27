@@ -1,129 +1,143 @@
 // screens/utils/assignmentLogic.js
-import 'react-native-get-random-values';
-import { ref, get, child, update, push } from "firebase/database";
-import { realtimeDB } from "../../firebaseConfig"; // Adjust the path as necessary
+
+import { get, child, ref } from 'firebase/database';
+import { realtimeDB } from '../../firebaseConfig';
+import { update } from 'firebase/database';
 
 /**
- * Assign users to shifts based on priority: CDI > CDD > Students (sorted by points).
- * @param {Object} shifts - The shifts to assign users to.
- * @param {Object} workers - The list of workers.
- * @returns {Promise<Object>} - Returns an object containing assignment updates and application updates.
+ *
+ * @param {Object} shifts  - The week's shifts.
+ * @param {Object} users   - All users keyed by user_id.
+ * @param {Object} workers - All workers keyed by workerDocId.
+ *
+ * @returns {Object} { pendingAssignments, workerUpdates }
+ *    - pendingAssignments: { [shiftId]: [userId, userId, ...], ... }
+ *    - workerUpdates: { [workerDocId]: newHours, ... }
  */
-export async function assignUsersToShifts(shifts, workers) {
-  // Categorize workers
-  const cdiWorkers = [];
-  const cddWorkers = [];
-  const studentWorkers = [];
+export async function assignUsersToShifts(shifts, users, workers) {
+  console.log('[assignUsersToShifts] START - auto-assigning users (status only)...');
 
-  Object.values(workers).forEach((worker) => {
-    if (worker.contract_type === "CDI") {
-      cdiWorkers.push(worker);
-    } else if (worker.contract_type === "CDD") {
-      cddWorkers.push(worker);
-    } else if (worker.contract_type === "student") {
-      studentWorkers.push(worker);
-    }
-  });
+  if (!shifts || Object.keys(shifts).length === 0) {
+    console.log('[assignUsersToShifts] No shifts to assign.');
+    return { pendingAssignments: {}, workerUpdates: {} };
+  }
+  if (!users || Object.keys(users).length === 0) {
+    console.log('[assignUsersToShifts] No users found.');
+    return { pendingAssignments: {}, workerUpdates: {} };
+  }
 
-  // Sort students by points descending
-  studentWorkers.sort((a, b) => (b.points || 0) - (a.points || 0));
+  // 1) Fetch all applications so we know who applied
+  const appsSnap = await get(child(ref(realtimeDB), 'applications'));
+  const allApplications = appsSnap.val() || {};
 
-  const assignmentsToUpdate = {};
-  const applicationStatusUpdates = {};
-
-  // Iterate over each shift to assign workers
-  for (const shiftId in shifts) {
-    const shift = shifts[shiftId];
-    const requiredWorkers = shift.max_workers;
-
-    if (requiredWorkers === 0) continue; // Skip if no workers needed
-
-    const alreadyAssigned = shift.assigned_workers || [];
-    const availableCDI = cdiWorkers.filter(
-      (w) => !alreadyAssigned.includes(w.worker_id)
-    );
-    const availableCDD = cddWorkers.filter(
-      (w) => !alreadyAssigned.includes(w.worker_id)
-    );
-    const availableStudents = studentWorkers.filter(
-      (w) => !alreadyAssigned.includes(w.worker_id) && (w.hours_assigned || 0) < 25
-    );
-
-    const newAssignments = [];
-
-    // Helper function to assign workers from a list
-    const assignFromList = (workerList, maxAssign) => {
-      for (const worker of workerList) {
-        if (newAssignments.length >= maxAssign) break;
-        newAssignments.push(worker.worker_id);
-
-        // If student, update hours_assigned
-        if (worker.contract_type === "student") {
-          worker.hours_assigned = (worker.hours_assigned || 0) + 8; // Assuming 8-hour shifts
-        }
+  // Helper to find the appId if userId applied for that shift
+  function findApplicationId(shiftId, userId) {
+    for (const [appId, app] of Object.entries(allApplications)) {
+      // In your DB, app.worker_id is actually the userId
+      if (
+        app.shift_id === shiftId &&
+        app.worker_id === userId &&
+        app.status === 'applied'
+      ) {
+        return appId;
       }
+    }
+    return null;
+  }
+
+  // Build lists by contract priority
+  const cdiUsers = [];
+  const cddUsers = [];
+  const studentUsers = [];
+
+  for (const [userId, userObj] of Object.entries(users)) {
+    const workerDocId = userObj.worker_id;
+    if (!workerDocId || !workers[workerDocId]) continue;
+
+    const workerData = workers[workerDocId];
+    const candidate = {
+      user_id: userId,
+      worker_doc_id: workerDocId,
+      contract_type: workerData.contract_type,
+      hours_assigned: workerData.hours_assigned || 0,
+      points: workerData.points || 0,
     };
 
-    // Assign CDI workers first
-    assignFromList(availableCDI, requiredWorkers - newAssignments.length);
+    if (candidate.contract_type === 'CDI') cdiUsers.push(candidate);
+    else if (candidate.contract_type === 'CDD') cddUsers.push(candidate);
+    else if (candidate.contract_type === 'student') studentUsers.push(candidate);
+  }
 
-    // Assign CDD workers next
-    if (newAssignments.length < requiredWorkers) {
-      assignFromList(
-        availableCDD,
-        requiredWorkers - newAssignments.length
-      );
-    }
+  // Optional: sort students by points
+  studentUsers.sort((a, b) => (b.points || 0) - (a.points || 0));
 
-    // Assign Students based on points
-    if (newAssignments.length < requiredWorkers) {
-      assignFromList(
-        availableStudents,
-        requiredWorkers - newAssignments.length
-      );
-    }
+  // We'll store which userIds we plan to assign to each shift
+  const pendingAssignments = {}; // { shiftId: [ userId, ... ] }
+  // We'll also store any hours updates for students
+  const workerUpdates = {}; // { workerDocId: newHours, ... }
 
-    // Combine already assigned workers with new assignments
-    const totalAssigned = [...alreadyAssigned, ...newAssignments];
+  // We'll also build an object of all the "application => status" changes
+  // so we can do them in one bulk update. (Optional)
+  const applicationStatusUpdates = {};
 
-    // Prepare the update for assigned_workers
-    assignmentsToUpdate[`shifts/${shiftId}/assigned_workers`] = totalAssigned;
+  // Helper function
+  function assignFromList(list, shiftId, alreadyAssigned, newAssignments, requiredWorkers) {
+    for (const candidate of list) {
+      if (newAssignments.length + alreadyAssigned.length >= requiredWorkers) break;
 
-    // Create assignment records and prepare application status updates
-    for (const workerId of newAssignments) {
-      const assignmentRef = push(ref(realtimeDB, "assignments"));
-      assignmentsToUpdate[`assignments/${assignmentRef.key}`] = {
-        assigned_at: new Date().toISOString(),
-        shift_id: shiftId,
-        user_id: workerId,
-      };
+      // skip if student over hours
+      if (candidate.contract_type === 'student' && candidate.hours_assigned >= 25) {
+        continue;
+      }
+      const appId = findApplicationId(shiftId, candidate.user_id);
+      if (!appId) continue; // not applied
 
-      // Find the corresponding application to update its status
-      // Assuming one application per worker per shift
-      const applicationsSnapshot = await get(
-        child(ref(realtimeDB), "applications")
-      );
-      const applications = applicationsSnapshot.val() || {};
+      // Great, we'll "assign" them in applications
+      newAssignments.push(candidate.user_id);
+      applicationStatusUpdates[`applications/${appId}/status`] = 'assigned';
 
-      for (const appId in applications) {
-        const app = applications[appId];
-        if (
-          app.worker_id === workerId &&
-          app.shift_id === shiftId &&
-          app.status === "applied"
-        ) {
-          applicationStatusUpdates[`applications/${appId}/status`] = "assigned";
-          break; // Assuming only one relevant application per worker per shift
-        }
+      // If student, increment local hours so we don't double-assign them
+      if (candidate.contract_type === 'student') {
+        candidate.hours_assigned += 8;
+        workerUpdates[candidate.worker_doc_id] = candidate.hours_assigned;
       }
     }
   }
 
-  // Combine all updates
-  const allUpdates = { ...assignmentsToUpdate, ...applicationStatusUpdates };
+  // 2) For each shift, pick who we *would* assign, but DON'T write to shift yet
+  for (const shiftId in shifts) {
+    const shift = shifts[shiftId];
+    const requiredWorkers = shift.max_workers || 0;
+    if (requiredWorkers === 0) continue;
 
-  // Perform the updates in Firebase
-  await update(ref(realtimeDB), allUpdates);
+    const alreadyAssigned = shift.assigned_workers || [];
+    const newAssignments = [];
 
-  return allUpdates; // Optional: Return the updates for confirmation
+    // in order: CDI, CDD, student
+    assignFromList(cdiUsers, shiftId, alreadyAssigned, newAssignments, requiredWorkers);
+    assignFromList(cddUsers, shiftId, alreadyAssigned, newAssignments, requiredWorkers);
+    assignFromList(studentUsers, shiftId, alreadyAssigned, newAssignments, requiredWorkers);
+
+    if (!pendingAssignments[shiftId]) pendingAssignments[shiftId] = [];
+    pendingAssignments[shiftId].push(...newAssignments);
+  }
+
+  // 3) Now we do a partial DB update:
+  //   - Mark applications as "assigned"
+  //   - Update worker hours if needed
+  //   - But NOT updating shifts assigned_workers
+  if (Object.keys(applicationStatusUpdates).length || Object.keys(workerUpdates).length) {
+    const updates = { ...applicationStatusUpdates };
+    for (const [workerDocId, newHrs] of Object.entries(workerUpdates)) {
+      updates[`workers/${workerDocId}/hours_assigned`] = newHrs;
+    }
+
+    console.log('[assignUsersToShifts] Updating DB with application statuses + hours only:', updates);
+    await update(ref(realtimeDB), updates);
+  }
+
+  console.log('[assignUsersToShifts] Finished partial auto-assign. No shift assignment written yet.');
+
+  // Return the pending assignments so the "Complete" step can finalize them
+  return { pendingAssignments, workerUpdates };
 }
