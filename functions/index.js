@@ -1,6 +1,8 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const moment = require("moment-timezone");
+const emailjs = require("emailjs-com");  // Importation pour EmailJS
+
 
 admin.initializeApp();
 
@@ -9,6 +11,51 @@ const TIMEZONE = "Europe/Brussels";
 const WEEKS_TO_KEEP = 7;
 const DAYS_OF_WEEK = ["monday",
   "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+
+
+
+/**
+ * Fonction pour envoyer un e-mail lorsqu'un compte est approuvé.
+ */
+exports.sendAccountApprovalEmail = functions.database
+.ref("/users/{userId}/status")
+.onUpdate(async (change, context) => {
+  const beforeStatus = change.before.val();
+  const afterStatus = change.after.val();
+  const userId = context.params.userId;
+
+  // Vérifiez si le statut de l'utilisateur est passé de "pending" à "approved"
+  if (beforeStatus === "pending" && afterStatus === "approved") {
+    try {
+      // Récupérer les informations de l'utilisateur
+      const userSnapshot = await db.ref(`/users/${userId}`).once("value");
+      const userData = userSnapshot.val();
+
+      const { email, first_name, last_name } = userData;
+
+      // Préparer le message à envoyer
+      const emailMessage = {
+        to_email: email, // L'email de l'utilisateur
+        subject: "Compte approuvé", // Sujet de l'email
+        message: `Bonjour ${first_name} ${last_name},\n\nVotre compte a été approuvé par un manager. Vous pouvez maintenant accéder à votre compte.\n\nMerci!\n\nCordialement,\nL'équipe de gestion`, // Corps du message
+      };
+
+      // Envoyer l'e-mail via EmailJS
+      const response = await emailjs.send(
+        "service_iqpxfyd",  // Remplacez par votre Service ID de EmailJS
+        "template_vmlysot",  // Remplacez par votre Template ID de EmailJS
+        emailMessage,  // Message avec les informations dynamiques
+        "TBFTMoXDcrCqTkW7o"  // Remplacez par votre User ID de EmailJS
+      );
+
+      console.log("E-mail envoyé avec succès : ", response);
+    } catch (error) {
+      console.error("Erreur lors de l'envoi de l'email : ", error);
+    }
+  }
+});
+
 
 /**
  * Add shifts for a given week.
