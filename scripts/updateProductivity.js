@@ -1,82 +1,148 @@
 import * as DocumentPicker from 'expo-document-picker';
 import * as XLSX from 'xlsx';
+import * as FileSystem from 'expo-file-system';
+import base64js from 'base64-js';
 import { Alert } from 'react-native';
 import { getDatabase, ref, get, update } from 'firebase/database';
 
 export const handleFileUpload = async () => {
   try {
-    // Prompt user to pick a file
+    console.log('handleFileUpload started');
+
+    // Step 1: Open file picker
     const result = await DocumentPicker.getDocumentAsync({
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // MIME type for Excel
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     });
 
-    if (result.type === 'success') {
-      const fileUri = result.uri;
+    console.log('File Picker Result:', result);
 
-      // Read the Excel file
-      const response = await fetch(fileUri);
-      const data = await response.arrayBuffer();
-      const workbook = XLSX.read(data, { type: 'array' });
+    if (!result.canceled) {
+      const fileUri = result.assets?.[0]?.uri;
 
-      // Check if the "productiviteit" sheet exists
-      if (!workbook.SheetNames.includes('productiviteit')) {
+      if (!fileUri) {
+        console.error('File URI not found in result.');
+        Alert.alert('Error', 'Unable to access the file. Please try again.');
+        return;
+      }
+
+      console.log('File URI:', fileUri);
+
+      // Step 2: Read file content using expo-file-system
+      const fileContent = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      console.log('File content read successfully. Length:', fileContent.length);
+
+      // Step 3: Parse the file content into a workbook
+      let workbook;
+      try {
+        const binaryData = base64js.toByteArray(fileContent); // Convert Base64 to Uint8Array
+        workbook = XLSX.read(binaryData, { type: 'array' }); // Use "array" instead of "binary"
+        console.log('Workbook Object:', workbook);
+      } catch (err) {
+        console.error('Error parsing workbook:', err);
+        Alert.alert('Error', 'Failed to parse the Excel file. Please check the file format.');
+        return;
+      }
+
+      // Step 4: Check if the "productiviteit" sheet exists
+      const sheetNames = workbook.SheetNames;
+      console.log('Available Sheet Names:', sheetNames);
+
+      if (!sheetNames.includes('productiviteit')) {
         Alert.alert('Error', 'The sheet "productiviteit" was not found in the file.');
         console.log('The sheet "productiviteit" was not found.');
         return;
       }
 
-      // Convert the "productiviteit" sheet into JSON
+      // Step 5: Convert the "productiviteit" sheet into JSON
       const sheet = workbook.Sheets['productiviteit'];
-      const jsonData = XLSX.utils.sheet_to_json(sheet);
+      let jsonData;
+      try {
+        jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+        console.log('Excel Data from "productiviteit":', jsonData);
+      } catch (err) {
+        console.error('Error converting sheet to JSON:', err);
+        Alert.alert('Error', 'Failed to process the sheet data. Please check the file content.');
+        return;
+      }
 
-      console.log('Excel Data from "productiviteit":', jsonData);
+      // Step 6: Validate required columns
+      const headers = jsonData[0]; // First row of the sheet
+      if (!headers) {
+        Alert.alert('Error', 'The sheet does not contain any headers.');
+        console.log('No headers found in the sheet.');
+        return;
+      }
 
-      // Initialize Firebase Database
+      // Normalize headers for consistency
+      const normalizedHeaders = headers.map((header) => header?.trim().toLowerCase());
+
+      // Check for required columns
+      const nameIndex = normalizedHeaders.indexOf('naam');
+      const gem2024Index = normalizedHeaders.indexOf('gem. 2024');
+      const gemLast3MonthsIndex = normalizedHeaders.indexOf('gem. laatste 3 maand');
+
+      if (nameIndex === -1 || gem2024Index === -1 || gemLast3MonthsIndex === -1) {
+        Alert.alert(
+          'Error',
+          'Required columns (Naam, Gem. 2024, Gem. Laatste 3 maand) are missing or incorrectly formatted.'
+        );
+        console.log('Detected headers:', headers);
+        return;
+      }
+
+      console.log('Header Indexes:', { nameIndex, gem2024Index, gemLast3MonthsIndex });
+
+      // Step 7: Initialize Firebase Database
       const database = getDatabase();
+      let updatedRecords = 0;
 
-      // Loop through each row in the Excel data
-      for (const row of jsonData) {
-        const fullName = row['Nom']; // "NOM PRENOM"
-        const [lastName, firstName] = fullName.split(' '); // Split into last and first name
-        const productivityYear = row['gem 2024']; // Yearly productivity
-        const productivityLast3Months = row['gem dernière 3 mois']; // Last 3 months productivity
+      // Step 8: Process rows and update Firebase
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = jsonData[i];
+        if (!row || row.length === 0) {
+          console.log(`Skipping empty row at index ${i}`);
+          continue;
+        }
 
-        if (firstName && lastName && productivityYear !== undefined && productivityLast3Months !== undefined) {
+        const fullName = row[nameIndex];
+        const productivityYear = row[gem2024Index];
+        const productivityLast3Months = row[gemLast3MonthsIndex];
+
+        if (fullName && productivityYear !== undefined && productivityLast3Months !== undefined) {
+          const nameParts = fullName.split(' ');
+          const lastName = nameParts[0];
+          const firstName = nameParts.slice(1).join(' '); // Handle multi-word first names
+
           try {
-            // Get all users from Firebase
             const usersRef = ref(database, 'users');
             const snapshot = await get(usersRef);
 
             if (snapshot.exists()) {
               const users = snapshot.val();
 
-              // Find the user matching the first_name and last_name
+              // Match user by first_name and last_name
               const userId = Object.keys(users).find(
                 (key) =>
-                  users[key].first_name.toLowerCase() === firstName.toLowerCase() &&
-                  users[key].last_name.toLowerCase() === lastName.toLowerCase()
+                  users[key].first_name?.toLowerCase() === firstName.toLowerCase() &&
+                  users[key].last_name?.toLowerCase() === lastName.toLowerCase()
               );
 
               if (userId) {
-                const user = users[userId]; // Get the user object
+                const user = users[userId];
                 const userRef = ref(database, `users/${userId}`);
 
-                // Only update if the productivity fields already exist
+                // Prepare updates
                 const updates = {};
-                if ('productivity_last_3_months' in user) {
-                  updates.productivity_last_3_months = productivityLast3Months;
-                }
-                if ('productivity_year_2024' in user) {
-                  updates.productivity_year_2024 = productivityYear;
-                }
+                updates.productivity_last_3_months = productivityLast3Months;
+                updates.productivity_year_2024 = productivityYear;
 
-                // If there are updates to make, send them to Firebase
-                if (Object.keys(updates).length > 0) {
-                  await update(userRef, updates);
-                  console.log(`Updated successfully for ${fullName}`);
-                } else {
-                  console.log(`No productivity fields to update for ${fullName}`);
-                }
+                // Update Firebase
+                await update(userRef, updates);
+                console.log(`Updated successfully for ${fullName}`);
+                updatedRecords++;
               } else {
                 console.log(`User not found: ${fullName}`);
               }
@@ -87,19 +153,23 @@ export const handleFileUpload = async () => {
             console.error(`Error updating data for ${fullName}:`, error);
           }
         } else {
-          console.log(`Incomplete data for ${fullName}`);
+          console.log(`Incomplete data for row ${i + 1}:`, row);
         }
       }
 
-      // Show success message
-      Alert.alert('Success', 'Productivity data has been updated successfully.');
+      // Step 9: Show success message
+      if (updatedRecords > 0) {
+        Alert.alert('Success', `${updatedRecords} records were successfully updated.`);
+      } else {
+        Alert.alert('No Updates', 'No matching records were found or updated.');
+      }
     }
   } catch (error) {
     if (DocumentPicker.isCancel(error)) {
       console.log('File selection cancelled');
     } else {
-      console.error('Error selecting file:', error);
-      Alert.alert('Error', 'An error occurred while selecting the file.');
+      console.error('Error in handleFileUpload:', error);
+      Alert.alert('Error', 'An error occurred during the file upload process.');
     }
   }
 };
