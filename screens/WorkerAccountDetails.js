@@ -15,8 +15,8 @@ import { getAuth } from "firebase/auth";
 
 export default function AccountDetails({ navigation }) {
   const [user, setUser] = useState({
-    firstName: "",
-    lastName: "",
+    first_name: "",
+    last_name: "",
     phone: "",
     email: "",
     fixedDays: "",
@@ -41,8 +41,8 @@ export default function AccountDetails({ navigation }) {
       if (snapshot.exists()) {
         const userData = snapshot.val();
         setUser({
-          firstName: userData.firstName || "",
-          lastName: userData.lastName || "",
+          first_name: userData.first_name || "",
+          last_name: userData.last_name || "",
           phone: userData.phone || "Niet gespecificeerd",
           email: userData.email || "Niet gespecificeerd",
           fixedDays: userData.fixDay || "Niet gespecificeerd",
@@ -84,7 +84,7 @@ export default function AccountDetails({ navigation }) {
     navigation.navigate("WorkerHome");
   };
 
-  const firstLetter = user.firstName.charAt(0).toUpperCase();
+  const firstLetter = user.first_name.charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -108,7 +108,7 @@ export default function AccountDetails({ navigation }) {
             <Text style={styles.label}>Voornaam:</Text>
             <TextInput
               style={[styles.input, isEditing && styles.disabledInput]}
-              value={user.firstName}
+              value={user.first_name}
               editable={false}
             />
           </View>
@@ -117,7 +117,7 @@ export default function AccountDetails({ navigation }) {
             <Text style={styles.label}>Achternaam:</Text>
             <TextInput
               style={[styles.input, isEditing && styles.disabledInput]}
-              value={user.lastName}
+              value={user.last_name}
               editable={false}
             />
           </View>
