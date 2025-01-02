@@ -289,16 +289,14 @@ export default function WorkerHome({ navigation }) {
             acceptedShifts.map((shift) => (
               <View key={shift.id} style={styles.acceptedShift}>
                 <View>
+                  {/* Display the day of the week and the date */}
                   <Text style={styles.acceptedShiftDay}>
-                    {new Date(shift.date).toLocaleDateString('nl-NL')}
-                  </Text>
-                  <Text style={styles.acceptedShiftTime}>
-                    Start: {new Date(shift.date).toLocaleTimeString('nl-NL')}
+                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}, {new Date(shift.date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
                 {/* Optionally show shift.status if you want the user to see “active” or “closed” */}
                 <Text style={styles.acceptedShiftStatus}>
-                  {shift.status === 'active' ? 'Actief' : 'geaccepteerd'}
+                  {shift.status === 'active' ? 'Actief' : 'Geaccepteerd'}
                 </Text>
               </View>
             ))
@@ -314,11 +312,9 @@ export default function WorkerHome({ navigation }) {
             myPendingApps.map((application) => (
               <View key={application.id} style={styles.pendingShift}>
                 <View>
+                  {/* Display the day of the week and the date */}
                   <Text style={styles.pendingShiftDay}>
-                    {new Date(application.shift_date).toLocaleDateString('nl-NL')}
-                  </Text>
-                  <Text style={styles.pendingShiftTime}>
-                    Start: {new Date(application.shift_date).toLocaleTimeString('nl-NL')}
+                    {new Date(application.shift_date).toLocaleDateString('nl-NL', { weekday: 'long' })}, {new Date(application.shift_date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -341,11 +337,9 @@ export default function WorkerHome({ navigation }) {
             availableShifts.map((shift) => (
               <View key={shift.id} style={styles.freeShift}>
                 <View>
+                  {/* Display the day of the week and the date */}
                   <Text style={styles.freeShiftDay}>
-                    {new Date(shift.date).toLocaleDateString('nl-NL')}
-                  </Text>
-                  <Text style={styles.freeShiftTime}>
-                    Start: {new Date(shift.date).toLocaleTimeString('nl-NL')}
+                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}, {new Date(shift.date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -368,19 +362,16 @@ export default function WorkerHome({ navigation }) {
             canceledShifts.map((shift) => (
               <View key={shift.id} style={styles.canceledShift}>
                 <View>
+                  {/* Display the day of the week and the date */}
                   <Text style={styles.canceledShiftDay}>
-                    {new Date(shift.date).toLocaleDateString('nl-NL')}
-                  </Text>
-                  <Text style={styles.canceledShiftTime}>
-                    Start: {new Date(shift.date).toLocaleTimeString('nl-NL')}
+                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}, {new Date(shift.date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
-                <Text style={styles.canceledShiftStatus}>niet geaccepteerd</Text>
+                <Text style={styles.canceledShiftStatus}>Niet geaccepteerd</Text>
               </View>
             ))
           )}
         </View>
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -466,10 +457,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-  },
-  acceptedShiftTime: {
-    fontSize: 14,
-    color: '#555',
   },
   acceptedShiftStatus: {
     fontSize: 14,
