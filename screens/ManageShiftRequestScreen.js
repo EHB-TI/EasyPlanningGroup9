@@ -1,10 +1,8 @@
-// screens/ManageShiftRequestScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
@@ -14,49 +12,38 @@ import { ref, onValue, update } from "firebase/database";
 import { realtimeDB } from "../firebaseConfig";
 
 export default function ManageShiftRequestScreen({ route, navigation }) {
-  // Destructure with default values to prevent undefined errors
-  const { shiftId = null, selectedDate = 'N/A', maxWorkers = 0 } = route.params || {};
+  const { selectedDate = "N/A", maxWorkers = 0 } = route.params || {};
 
   const [applications, setApplications] = useState([]);
   const [currentAssignedWorkers, setCurrentAssignedWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!shiftId) {
-      Alert.alert("Error", "Shift ID is missing.");
-      navigation.goBack(); // Navigate back if shiftId is not provided
-      return;
-    }
-
     setLoading(true);
+
     const applicationsRef = ref(realtimeDB, "applications");
-    const shiftsRef = ref(realtimeDB, `shifts/${shiftId}`);
 
-    const unsubscribeApplications = onValue(applicationsRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      const filteredApplications = Object.keys(data)
-        .map((key) => ({ id: key, ...data[key] }))
-        .filter((app) => app.shift_id === shiftId && app.status === "applied");
-      setApplications(filteredApplications);
-    });
-
-    const unsubscribeShifts = onValue(shiftsRef, (snapshot) => {
-      const data = snapshot.val() || {};
-      setCurrentAssignedWorkers(data.assigned_workers || []);
-    });
-
-    setLoading(false);
+    const unsubscribeApplications = onValue(
+      applicationsRef,
+      (snapshot) => {
+        const data = snapshot.val() || {};
+        const filteredApplications = Object.keys(data)
+          .map((key) => ({ id: key, ...data[key] }))
+          .filter((app) => app.status === "applied");
+        setApplications(filteredApplications);
+        setLoading(false);
+      },
+      (error) => console.error("Error fetching applications:", error)
+    );
 
     return () => {
       unsubscribeApplications();
-      unsubscribeShifts();
     };
-  }, [shiftId, navigation]);
+  }, []);
 
-  // Assign a worker
   const handleAssignWorker = async (application) => {
     if (currentAssignedWorkers.length >= maxWorkers) {
-      Alert.alert("Limit Reached", "Maximum workers already assigned to this shift.");
+      Alert.alert("Limit Reached", "Maximum workers already assigned.");
       return;
     }
 
@@ -64,192 +51,151 @@ export default function ManageShiftRequestScreen({ route, navigation }) {
 
     try {
       const updates = {
-        [`shifts/${shiftId}/assigned_workers`]: newAssignedWorkers,
         [`applications/${application.id}/status`]: "approved",
       };
 
       await update(ref(realtimeDB), updates);
 
-      setCurrentAssignedWorkers(newAssignedWorkers);
-      setApplications((prev) =>
-        prev.filter((app) => app.id !== application.id)
-      );
+      setApplications((prev) => prev.filter((app) => app.id !== application.id));
 
       Alert.alert("Success", "Worker assigned successfully.");
     } catch (error) {
-      console.error(error);
+      console.error("Error assigning worker:", error);
       Alert.alert("Error", "Failed to assign worker.");
     }
   };
 
-  // Remove a worker
-  const handleRemoveWorker = async (workerId) => {
-    const updatedAssignedWorkers = currentAssignedWorkers.filter(
-      (id) => id !== workerId
-    );
-
-    try {
-      const updates = {
-        [`shifts/${shiftId}/assigned_workers`]: updatedAssignedWorkers,
-      };
-
-      await update(ref(realtimeDB), updates);
-
-      setCurrentAssignedWorkers(updatedAssignedWorkers);
-
-      Alert.alert("Success", "Worker removed successfully.");
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to remove worker.");
-    }
-  };
-
   const renderApplication = ({ item }) => (
-    <View style={styles.workerCard}>
-      <Text style={styles.workerName}>Worker: {item.worker_id}</Text>
-      <Text style={styles.workerStatus}>Status: {item.status}</Text>
-      <TouchableOpacity
-        style={styles.assignButton}
-        onPress={() => handleAssignWorker(item)}
-      >
-        <Text style={styles.assignButtonText}>Assign</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const renderAssignedWorker = ({ item }) => (
-    <View style={styles.workerCard}>
-      <Text style={styles.workerName}>Worker: {item}</Text>
-      <TouchableOpacity
-        style={styles.removeButton}
-        onPress={() => handleRemoveWorker(item)}
-      >
-        <Text style={styles.removeButtonText}>Remove</Text>
-      </TouchableOpacity>
+    <View style={styles.card}>
+      <View style={styles.textContainer}>
+        <Text style={styles.workerName}>{item.worker_id}</Text>
+        <Text style={styles.workerStatus}>Status: {item.status}</Text>
+      </View>
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={styles.acceptButton}
+          onPress={() => handleAssignWorker(item)}
+        >
+          <Text style={styles.buttonText}>Accept</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.declineButton}
+          onPress={() =>
+            Alert.alert("Action", `${item.worker_id} was declined.`)
+          }
+        >
+          <Text style={styles.buttonText}>Decline</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#23C882" />
+        <ActivityIndicator size="large" color="#3498db" />
         <Text style={styles.loadingText}>Loading data...</Text>
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>Manage Shift for {selectedDate}</Text>
-
-      <Text style={styles.subHeader}>Assigned Workers</Text>
-      {currentAssignedWorkers.length > 0 ? (
-        <FlatList
-          data={currentAssignedWorkers}
-          renderItem={renderAssignedWorker}
-          keyExtractor={(item) => item}
-          contentContainerStyle={styles.workerList}
-        />
-      ) : (
-        <Text style={styles.noDataText}>No workers assigned yet.</Text>
-      )}
-
-      <Text style={styles.subHeader}>Applications</Text>
-      {applications.length > 0 ? (
-        <FlatList
-          data={applications}
-          renderItem={renderApplication}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.workerList}
-        />
-      ) : (
-        <Text style={styles.noDataText}>No applications available.</Text>
-      )}
-    </ScrollView>
+    <View style={styles.container}>
+      <Text style={styles.header}>Manage Shift Requests</Text>
+      <Text style={styles.subHeader}>Shift Date: {selectedDate}</Text>
+      <FlatList
+        data={applications}
+        renderItem={renderApplication}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={styles.list}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     padding: 16,
-    backgroundColor: "#F5F5F5",
-    flexGrow: 1,
+    backgroundColor: "#f4f6f9",
   },
   header: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "bold",
-    color: "#23C882",
+    color: "#2c3e50",
     textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 10,
   },
   subHeader: {
     fontSize: 18,
-    fontWeight: "bold",
-    color: "#555",
-    marginTop: 20,
-    marginBottom: 10,
+    color: "#7f8c8d",
+    textAlign: "center",
+    marginBottom: 20,
   },
-  workerCard: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  card: {
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
     padding: 16,
-    borderRadius: 8,
-    backgroundColor: "#FFFFFF",
-    marginBottom: 12,
+    marginBottom: 16,
     shadowColor: "#000",
     shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  textContainer: {
+    marginBottom: 12, // Ajoute de l'espace entre le texte et les boutons
   },
   workerName: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
+    fontWeight: "600",
+    color: "#34495e",
+    flexWrap: "wrap", // Gère les longues chaînes
   },
   workerStatus: {
     fontSize: 14,
-    color: "#777",
+    color: "#7f8c8d",
+    marginTop: 4,
+    flexWrap: "wrap",
   },
-  assignButton: {
-    backgroundColor: "#23C882",
-    padding: 8,
+  buttonContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between", // Boutons bien espacés horizontalement
+    marginTop: 10, // Ajoute de l'espace au-dessus des boutons
+  },
+  acceptButton: {
+    backgroundColor: "#27ae60",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
+    flex: 1, // Les boutons occupent la même largeur
+    marginRight: 5, // Ajoute un espacement entre les boutons
   },
-  assignButtonText: {
-    color: "#FFF",
+  declineButton: {
+    backgroundColor: "#e74c3c",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    flex: 1, // Les boutons occupent la même largeur
+    marginLeft: 5, // Ajoute un espacement entre les boutons
+  },
+  buttonText: {
+    color: "#ffffff",
     fontSize: 14,
     fontWeight: "bold",
-  },
-  removeButton: {
-    backgroundColor: "#E74C3C",
-    padding: 8,
-    borderRadius: 8,
-  },
-  removeButtonText: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  noDataText: {
-    fontSize: 16,
-    color: "#777",
     textAlign: "center",
-    marginVertical: 20,
+  },
+  list: {
+    paddingBottom: 20,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 16,
   },
   loadingText: {
-    fontSize: 16,
-    color: "#777",
     marginTop: 10,
-  },
-  workerList: {
-    paddingBottom: 20,
+    fontSize: 16,
+    color: "#7f8c8d",
   },
 });
