@@ -17,15 +17,16 @@ export default function WorkerHome({ navigation }) {
   const [weeks, setWeeks] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [assignments, setAssignments] = useState([]); // NEW: so we can read `fixed_day`
   const [refreshing, setRefreshing] = useState(false);
 
   const auth = getAuth();
   const currentUser = auth.currentUser;
   const database = getDatabase();
 
-  // -------------
+  // ------------------------------------------------------------------
   // FETCH METHODS
-  // -------------
+  // ------------------------------------------------------------------
 
   // 1) Fetch user
   const fetchUser = async (userId) => {
@@ -42,7 +43,7 @@ export default function WorkerHome({ navigation }) {
     }
   };
 
-  // 2) Fetch weeks (if you still need them)
+  // 2) Fetch weeks
   const fetchWeeks = () => {
     const weeksRef = ref(database, 'weeks');
     onValue(weeksRef, (snapshot) => {
@@ -90,6 +91,22 @@ export default function WorkerHome({ navigation }) {
     });
   };
 
+  // 5) Fetch assignments (NEW)
+  const fetchAssignments = () => {
+    const assignmentsRef = ref(database, 'assignments');
+    onValue(assignmentsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const assignmentsArray = Object.entries(snapshot.val()).map(([id, data]) => ({
+          id,
+          ...data,
+        }));
+        setAssignments(assignmentsArray);
+      } else {
+        setAssignments([]);
+      }
+    });
+  };
+
   // On mount
   useEffect(() => {
     if (currentUser) {
@@ -98,6 +115,7 @@ export default function WorkerHome({ navigation }) {
     fetchWeeks();
     fetchShifts();
     fetchApplications();
+    fetchAssignments(); // NEW
   }, [currentUser]);
 
   // Pull to refresh
@@ -109,12 +127,13 @@ export default function WorkerHome({ navigation }) {
     fetchWeeks();
     fetchShifts();
     fetchApplications();
+    fetchAssignments(); // NEW
     setTimeout(() => setRefreshing(false), 1000);
   }, [currentUser]);
 
-  // -------------
+  // ------------------------------------------------------------------
   // HELPER LOGIC
-  // -------------
+  // ------------------------------------------------------------------
 
   // Display user's initial
   const firstLetter = user.first_name ? user.first_name.charAt(0).toUpperCase() : '';
@@ -198,10 +217,6 @@ export default function WorkerHome({ navigation }) {
     );
   };
 
-  // -------------
-  // FILTERED DATA
-  // -------------
-
   // A. isUserAssigned => check if user UID is in shift.assigned_workers
   const isUserAssignedToShift = (shift) => {
     if (!shift.assigned_workers) return false;
@@ -215,27 +230,49 @@ export default function WorkerHome({ navigation }) {
     );
   };
 
-  // 1) Accepted Shifts => user is assigned, regardless of shift status
-  //    (We then sort them by date ascending so the user sees them in chronological order)
+  // C. getUserAssignmentForShift => see if there's an assignment for the current user with fixed_day info
+  //    This allows us to check assignment.fixed_day to display "Vaste Dag" if true.
+  const getUserAssignmentForShift = (shiftId) => {
+    return assignments.find(
+      (a) => a.shift_id === shiftId && a.user_id === currentUser?.uid
+    );
+  };
+
+  // We only want to show shifts from "today" onward (filter out old/past shifts).
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Compare at midnight
+
+  // 1) Accepted Shifts => user is assigned, ignoring shift.status, but must be >= today
   const acceptedShifts = shifts
+    .filter((shift) => {
+      const shiftDate = new Date(shift.date);
+      return shiftDate >= now; // NEW: hide old shifts
+    })
     .filter((shift) => isUserAssignedToShift(shift))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  // The count of all accepted shifts (active or closed)
   const acceptedShiftsCount = acceptedShifts.length;
 
-  // 2) My pending “applied” apps for active shifts
+  // 2) My pending “applied” apps => shift is active and date >= today
   const myPendingApps = applications.filter((app) => {
     if (app.worker_id !== currentUser?.uid) return false;
     if (app.status !== 'applied') return false;
+    // Must be active + date not in the past
     const shiftForApp = shifts.find((s) => s.id === app.shift_id);
     if (!shiftForApp) return false;
+
+    const shiftDate = new Date(shiftForApp.date);
+    if (shiftDate < now) return false; // Hide old
     return shiftForApp.status === 'active';
   });
 
-  // 3) Canceled Shifts => shift.status === "closed", user had an application, not assigned
+  // 3) Canceled Shifts => shift.status === "closed", user had an application, not assigned, date >= today
   const canceledShifts = shifts
-    .filter((shift) => shift.status === 'closed')
+    .filter((shift) => {
+      const shiftDate = new Date(shift.date);
+      if (shiftDate < now) return false; // hide old
+      return shift.status === 'closed';
+    })
     .filter((shift) => {
       // user had an application
       const userApp = getUserApplicationForShift(shift.id);
@@ -244,9 +281,13 @@ export default function WorkerHome({ navigation }) {
       return !isUserAssignedToShift(shift);
     });
 
-  // 4) Available Shifts => shift is active, user not assigned, no pending or validated application
+  // 4) Available Shifts => shift is active, user not assigned, no pending app, date >= today
   const availableShifts = shifts
-    .filter((shift) => shift.status === 'active')
+    .filter((shift) => {
+      const shiftDate = new Date(shift.date);
+      if (shiftDate < now) return false; // hide old
+      return shift.status === 'active';
+    })
     .filter((shift) => !isUserAssignedToShift(shift))
     .filter(
       (shift) =>
@@ -256,9 +297,9 @@ export default function WorkerHome({ navigation }) {
     )
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
-  // -------------
+  // ------------------------------------------------------------------
   // RENDER
-  // -------------
+  // ------------------------------------------------------------------
 
   return (
     <SafeAreaView style={styles.container}>
@@ -286,20 +327,29 @@ export default function WorkerHome({ navigation }) {
           {acceptedShifts.length === 0 ? (
             <Text style={styles.noAccepted}>Geen geaccepteerde shifts</Text>
           ) : (
-            acceptedShifts.map((shift) => (
-              <View key={shift.id} style={styles.acceptedShift}>
-                <View>
-                  {/* Display the day of the week and the date */}
-                  <Text style={styles.acceptedShiftDay}>
-                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}, {new Date(shift.date).toLocaleDateString('nl-NL')}
+            acceptedShifts.map((shift) => {
+              const userAssignment = getUserAssignmentForShift(shift.id);
+              const isFixedDay = userAssignment?.fixed_day === true; // NEW: check assignment.fixed_day
+
+              return (
+                <View key={shift.id} style={styles.acceptedShift}>
+                  <View>
+                    {/* Display the day of the week and the date */}
+                    <Text style={styles.acceptedShiftDay}>
+                      {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}
+                      , {new Date(shift.date).toLocaleDateString('nl-NL')}
+                    </Text>
+                    {isFixedDay && (
+                      <Text style={styles.fixedDayLabel}>Vaste Dag</Text>
+                    )}
+                  </View>
+                  {/* Optionally show shift.status */}
+                  <Text style={styles.acceptedShiftStatus}>
+                    {shift.status === 'active' ? 'Actief' : 'Geaccepteerd'}
                   </Text>
                 </View>
-                {/* Optionally show shift.status if you want the user to see “active” or “closed” */}
-                <Text style={styles.acceptedShiftStatus}>
-                  {shift.status === 'active' ? 'Actief' : 'Geaccepteerd'}
-                </Text>
-              </View>
-            ))
+              );
+            })
           )}
         </View>
 
@@ -312,9 +362,11 @@ export default function WorkerHome({ navigation }) {
             myPendingApps.map((application) => (
               <View key={application.id} style={styles.pendingShift}>
                 <View>
-                  {/* Display the day of the week and the date */}
                   <Text style={styles.pendingShiftDay}>
-                    {new Date(application.shift_date).toLocaleDateString('nl-NL', { weekday: 'long' })}, {new Date(application.shift_date).toLocaleDateString('nl-NL')}
+                    {new Date(application.shift_date).toLocaleDateString('nl-NL', {
+                      weekday: 'long',
+                    })}
+                    , {new Date(application.shift_date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -328,7 +380,7 @@ export default function WorkerHome({ navigation }) {
           )}
         </View>
 
-        {/* BESCHIKBARE SHIFTS => user not assigned, no application, shift is active */}
+        {/* BESCHIKBARE SHIFTS => user not assigned, no application, shift is active, date >= today */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Beschikbare Shifts</Text>
           {availableShifts.length === 0 ? (
@@ -337,9 +389,9 @@ export default function WorkerHome({ navigation }) {
             availableShifts.map((shift) => (
               <View key={shift.id} style={styles.freeShift}>
                 <View>
-                  {/* Display the day of the week and the date */}
                   <Text style={styles.freeShiftDay}>
-                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}, {new Date(shift.date).toLocaleDateString('nl-NL')}
+                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}
+                    , {new Date(shift.date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -353,7 +405,7 @@ export default function WorkerHome({ navigation }) {
           )}
         </View>
 
-        {/* GEANNULEERDE SHIFTS => closed + user applied + not assigned */}
+        {/* GEANNULEERDE SHIFTS => closed + user had an application + not assigned + date >= today */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Geannuleerde Shifts</Text>
           {canceledShifts.length === 0 ? (
@@ -362,9 +414,9 @@ export default function WorkerHome({ navigation }) {
             canceledShifts.map((shift) => (
               <View key={shift.id} style={styles.canceledShift}>
                 <View>
-                  {/* Display the day of the week and the date */}
                   <Text style={styles.canceledShiftDay}>
-                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}, {new Date(shift.date).toLocaleDateString('nl-NL')}
+                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}
+                    , {new Date(shift.date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
                 <Text style={styles.canceledShiftStatus}>Niet geaccepteerd</Text>
@@ -458,6 +510,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
+  fixedDayLabel: {
+    fontSize: 12,
+    color: '#FF9800', // Orange for "Vaste Dag" label
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
   acceptedShiftStatus: {
     fontSize: 14,
     fontWeight: '600',
@@ -476,10 +534,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-  },
-  pendingShiftTime: {
-    fontSize: 14,
-    color: '#555',
   },
   cancelPendingButton: {
     backgroundColor: '#FF5722',
@@ -511,10 +565,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
   },
-  freeShiftTime: {
-    fontSize: 14,
-    color: '#555',
-  },
   reserveButton: {
     backgroundColor: '#4CAF50',
     paddingVertical: 8,
@@ -544,10 +594,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
-  },
-  canceledShiftTime: {
-    fontSize: 14,
-    color: '#555',
   },
   canceledShiftStatus: {
     fontSize: 14,
