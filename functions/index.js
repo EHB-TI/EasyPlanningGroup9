@@ -12,8 +12,7 @@ const DAYS_OF_WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "s
 
 /**
  * Add shifts for a given week.
- * @param {string} weekId - The ID of the week (e.g., "week_2024-12-16").
- * @param {string} weekStartDate - Start date of the week ("YYYY-MM-DD").
+ * [No changes here... your existing code remains the same]
  */
 async function addShifts(weekId, weekStartDate) {
   console.log(`[DEBUG] Adding shifts for week ${weekId} starting at ${weekStartDate}`);
@@ -45,9 +44,7 @@ async function addShifts(weekId, weekStartDate) {
 
 /**
  * Helper function to find and prepare deletions for a given node.
- * @param {string} nodePath - e.g., "assignments" or "applications"
- * @param {Object} targetObject - the object to which we add all deletion paths
- * @param {string[]} shiftIdsToDelete - array of shift IDs like ["shift_2025-01-01", ...]
+ * [No changes here... your existing code remains the same]
  */
 async function findAndDeleteRelatedEntries(nodePath, targetObject, shiftIdsToDelete) {
   console.log(`[DEBUG] Checking ${nodePath} for entries to delete...`);
@@ -63,7 +60,6 @@ async function findAndDeleteRelatedEntries(nodePath, targetObject, shiftIdsToDel
     // Debug each entry’s shift_id
     console.log(`[DEBUG] ${nodePath}/${entryKey} => shift_id: ${entryValue.shift_id}`);
 
-    // Use Object.prototype.hasOwnProperty.call to avoid linting errors and ensure reliability
     if (shiftIdsToDelete.includes(entryValue.shift_id.trim())) {
       console.log(`[DEBUG] Marking ${nodePath}/${entryKey} for deletion.`);
       targetObject[`${nodePath}/${entryKey}`] = null;
@@ -167,7 +163,17 @@ exports.manageWeeksAndShifts = functions.pubsub
       // Clean up any shifts that are outside the desired date range
       await cleanUpShiftsOutOfRange(earliestDate, latestDate);
 
-      console.log("[DEBUG] Dynamic week and shift management completed successfully.");
+      // --------------------------------------------------
+      // NEW STEP: AUTO-ASSIGN FIXED DAYS (CURRENT WEEK + 2)
+      // ALSO CHECK 1 PREVIOUS WEEK FOR NEW USERS
+      // --------------------------------------------------
+
+      // We'll assign from (currentWeekStart - 1 week) to (currentWeekStart + 2 weeks).
+      const startForAssignments = currentWeekStart.clone().subtract(1, "weeks");
+      const endForAssignments = currentWeekStart.clone().add(2, "weeks");
+      await autoAssignFixedDaysToShifts(startForAssignments, endForAssignments);
+
+      console.log("[DEBUG] Dynamic week and shift management + fixed-day assignments completed successfully.");
     } catch (error) {
       console.error("[ERROR] Error managing weeks and shifts:", error);
     }
@@ -175,8 +181,7 @@ exports.manageWeeksAndShifts = functions.pubsub
 
 /**
  * Remove a week and its associated shifts, along with related assignments and applications.
- * @param {string} weekKey - The key of the week to remove.
- * @param {Object} weekData - The data of the week to remove.
+ * [No changes to your existing removeWeekAndShifts logic...]
  */
 async function removeWeekAndShifts(weekKey, weekData) {
   console.log(`[DEBUG] Removing week ${weekKey}`);
@@ -219,13 +224,12 @@ async function removeWeekAndShifts(weekKey, weekData) {
   console.log(`[DEBUG] Removed week and shifts for: ${weekKey}`);
   console.log(
     `[DEBUG] Deleted ${Object.keys(assignmentsToDelete).length} assignments and ` +
-      `${Object.keys(applicationsToDelete).length} applications related to deleted shifts.`);
+    `${Object.keys(applicationsToDelete).length} applications related to deleted shifts.`);
 }
 
 /**
  * Remove any shifts (and their related assignments/applications) that are outside the desired date range.
- * @param {moment.Moment} earliestDate - Moment object representing the earliest date to retain.
- * @param {moment.Moment} latestDate - Moment object representing the latest date to retain.
+ * [No changes to your existing cleanUpShiftsOutOfRange logic...]
  */
 async function cleanUpShiftsOutOfRange(earliestDate, latestDate) {
   console.log(`[DEBUG] Initiating cleanup of shifts outside the range from ${earliestDate.format("YYYY-MM-DD")} to ${latestDate.format("YYYY-MM-DD")}...`);
@@ -255,7 +259,6 @@ async function cleanUpShiftsOutOfRange(earliestDate, latestDate) {
   console.log(`[DEBUG] Shifts to delete based on date range:`, shiftsToDelete);
 
   // Additionally, find orphaned shift_ids in assignments and applications
-  // These are shift_ids referenced but no longer exist in the shifts node
   const assignmentsSnapshot = await db.ref("assignments").once("value");
   const assignments = assignmentsSnapshot.val() || {};
   const assignmentShiftIds = new Set(Object.values(assignments).map((a) => a.shift_id.trim()));
@@ -309,6 +312,7 @@ async function cleanUpShiftsOutOfRange(earliestDate, latestDate) {
 
 /**
  * HTTP Function to update the status of a shift.
+ * [No changes here... your existing code remains the same]
  */
 exports.updateShiftStatus = functions.https.onRequest(async (req, res) => {
   // Enable CORS if needed, handle methods etc.
@@ -345,3 +349,131 @@ exports.updateShiftStatus = functions.https.onRequest(async (req, res) => {
     return res.status(500).send("Internal Server Error.");
   }
 });
+
+/* ------------------------------------------------------------------------
+   NEW FUNCTION: AUTO-ASSIGN WORKERS TO FIXED-DAY SHIFTS FOR A DATE RANGE
+   currentWeekStart - 1 week   => for new users in the previous week
+   currentWeekStart + 2 weeks => next 2 weeks
+------------------------------------------------------------------------- */
+/**
+ * AUTO-ASSIGN WORKERS TO SHIFTS IF IT MATCHES THEIR FIXED DAY
+ * AND ADD { fixed_day: true } IN THE ASSIGNMENT.
+ *
+ * This version:
+ *  - Iterates over *all* shifts (no date/status checks)
+ *  - Parses the dayOfWeek from shift_YYYY-MM-DD
+ *  - If worker's fixed_days includes that day, sets assignment.fixed_day = true
+ */
+async function autoAssignFixedDaysToShifts() {
+  console.log("[DEBUG] autoAssignFixedDaysToShifts: Starting...");
+
+  // 1) Fetch all workers
+  const workersSnap = await db.ref("workers").once("value");
+  const allWorkers = workersSnap.val() || {};
+  console.log(`[DEBUG] Found ${Object.keys(allWorkers).length} workers in /workers`);
+
+  // 2) Fetch all shifts
+  const shiftsSnap = await db.ref("shifts").once("value");
+  const allShifts = shiftsSnap.val() || {};
+  console.log(`[DEBUG] Found ${Object.keys(allShifts).length} shifts in /shifts`);
+
+  // Convert to arrays for iteration
+  const workerEntries = Object.entries(allWorkers); // [ [workerId, {...workerData}], ... ]
+  const shiftEntries = Object.entries(allShifts); // [ [shiftId, {...shiftData}], ... ]
+
+  let assignmentsMade = 0;
+
+  // 3) For each shift in the DB
+  for (const [shiftId, shiftData] of shiftEntries) {
+    console.log("----------------------------------------------");
+    console.log(`[DEBUG] Checking shift "${shiftId}"...`);
+
+    // Extract YYYY-MM-DD from shiftId => "shift_2025-01-01"
+    const match = shiftId.match(/^shift_(\d{4}-\d{2}-\d{2})$/);
+    if (!match) {
+      console.log(`[DEBUG] Skipping shift "${shiftId}" - not named shift_YYYY-MM-DD.`);
+      continue;
+    }
+
+    const shiftDateString = match[1]; // e.g. "2025-01-01"
+    const shiftDate = moment(shiftDateString, "YYYY-MM-DD");
+    if (!shiftDate.isValid()) {
+      console.log(`[DEBUG] Skipping shift "${shiftId}" - invalid date parsed: ${shiftDateString}.`);
+      continue;
+    }
+
+    // If your workers' fixed_days are in English: ["monday","tuesday"], do ".locale('en')"
+    // If they're in Dutch: ["maandag","dinsdag"], do ".locale('nl')"
+    const dayOfWeek = shiftDate.locale("en").format("dddd").toLowerCase();
+    console.log(`[DEBUG] Shift "${shiftId}" => dayOfWeek="${dayOfWeek}"`);
+
+    // 4) Check each worker’s fixed_days
+    for (const [workerRecordId, workerData] of workerEntries) {
+      console.log(`[DEBUG]   Checking worker "${workerRecordId}"...`);
+
+      // Must have a fixed_days array
+      if (!Array.isArray(workerData.fixed_days)) {
+        console.log(`[DEBUG]   -> SKIP: No fixed_days found for worker "${workerRecordId}".`);
+        continue;
+      }
+
+      // If dayOfWeek not in their fixed_days => skip
+      if (!workerData.fixed_days.includes(dayOfWeek)) {
+        console.log(`[DEBUG]   -> SKIP: dayOfWeek="${dayOfWeek}" not in [${workerData.fixed_days}].`);
+        continue;
+      }
+
+      // Worker has a user_id? (the Auth UID you want in assigned_workers)
+      const userAuthId = workerData.user_id;
+      if (!userAuthId) {
+        console.log(`[DEBUG]   -> SKIP: Worker "${workerRecordId}" has no user_id (no linked Auth user).`);
+        continue;
+      }
+
+      // assigned_workers might be an array or a number
+      const assignedWorkers = shiftData.assigned_workers || [];
+      const assignedWorkersArray = Array.isArray(assignedWorkers) ?
+        assignedWorkers :
+        [];
+
+      // Already assigned?
+      if (assignedWorkersArray.includes(userAuthId)) {
+        console.log(`[DEBUG]   -> SKIP: User "${userAuthId}" already assigned to shift "${shiftId}".`);
+        continue;
+      }
+
+      // If we reach here => we want to assign them as a "fixed day" worker
+      console.log(`[DEBUG]   => ASSIGNING user "${userAuthId}" to shift "${shiftId}" [fixed day]`);
+
+      // Prepare updated assigned_workers
+      const updatedAssignedWorkers = [...assignedWorkersArray, userAuthId];
+
+      // Create an assignment record
+      const assignmentId = `assignment_id_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+      // ************ THE KEY PART: fixed_day: true ************
+      const assignmentData = {
+        assigned_at: moment().toISOString(),
+        shift_id: shiftId,
+        user_id: userAuthId,
+        fixed_day: true, // <--- This flags that it was assigned as a fixed day
+      };
+
+      // Multi-path update
+      const updates = {};
+      updates[`assignments/${assignmentId}`] = assignmentData;
+      updates[`shifts/${shiftId}/assigned_workers`] = updatedAssignedWorkers;
+
+      try {
+        await db.ref().update(updates);
+        assignmentsMade++;
+        console.log(`[DEBUG]   -> SUCCESS: assigned user "${userAuthId}" to shift "${shiftId}" with fixed_day=true`);
+      } catch (err) {
+        console.error(`[ERROR]   -> FAILED to assign user "${userAuthId}" to shift "${shiftId}":`, err);
+      }
+    }
+  }
+
+  console.log("----------------------------------------------");
+  console.log(`[DEBUG] autoAssignFixedDaysToShifts complete. Total new assignments made: ${assignmentsMade}`);
+}
