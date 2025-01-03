@@ -21,6 +21,7 @@ import UserPanel from './screens/UserPanel';
 import ApplicationsScreen from "./screens/ApplicationsScreen";
 import CreatePlanningScreen from "./screens/CreatePlanningScreen";
 import AdminPanel from "./screens/AdminPanel";
+import WorkerInstellingen from "./screens/WorkerInstellingen"
 
 
 
@@ -112,6 +113,7 @@ export default function App() {
         component={CreatePlanningScreen}
         options={{ headerShown: false }}
       />
+        <Stack.Screen name="WorkerInstellingen" component={WorkerInstellingen} options={{ headerShown: false }} />
 
         {/* Future Screens */}
         {/* <Stack.Screen name="MakePlanningScreen" component={MakePlanningScreen} options={{ headerShown: false }} /> */}
