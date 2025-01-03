@@ -8,7 +8,7 @@ import {
   ScrollView,
   StatusBar,
   SafeAreaView,
-  Alert, // Import Alert for user feedback
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -30,9 +30,9 @@ export default function AccountDetails({ navigation }) {
     email: "",
     contract: "", // From 'users' node
   });
-  const [fixedDays, setFixedDays] = useState([]);
-  const [contractType, setContractType] = useState(""); // From 'workers' node
-  const [maxHoursWeek, setMaxHoursWeek] = useState(0); // From 'workers' node
+  const [fixDays, setFixDays] = useState([]);        // Renamed from 'fixedDays'
+  const [contractType, setContractType] = useState(""); 
+  const [maxHoursWeek, setMaxHoursWeek] = useState(0); 
   const [isEditing, setIsEditing] = useState(false);
 
   const auth = getAuth();
@@ -43,7 +43,7 @@ export default function AccountDetails({ navigation }) {
     if (currentUser) {
       const userId = currentUser.uid;
       fetchUser(userId);
-      fetchWorkerData(userId); // Fetch worker-related data
+      fetchWorkerData(userId);
     }
   }, [currentUser]);
 
@@ -83,50 +83,71 @@ export default function AccountDetails({ navigation }) {
     }
   };
 
-  // Function to fetch worker data including fixed_days, contract_type, and max_hours_week
-  const fetchWorkerData = async (userId) => {
-    try {
-      const workersRef = ref(database, "workers");
-      const workerQuery = query(workersRef, orderByChild("user_id"), equalTo(userId));
-      const snapshot = await get(workerQuery);
+  // Function to fetch worker data including fix_days, contract_type, and max_hours_week
+const fetchWorkerData = async (userId) => {
+  try {
+    const workersRef = ref(database, "workers");
+    const workerQuery = query(workersRef, orderByChild("user_id"), equalTo(userId));
+    const snapshot = await get(workerQuery);
 
-      if (snapshot.exists()) {
-        const workersData = snapshot.val();
-        // Assuming user_id is unique, get the first worker
-        const workerKeys = Object.keys(workersData);
-        if (workerKeys.length > 0) {
-          const worker = workersData[workerKeys[0]];
-          const fixedDaysData = worker.fixed_days;
-          const contractTypeData = worker.contract_type;
-          const maxHoursWeekData = worker.max_hours_week;
-
-          // Convert fixed_days object to an array
-          const fixedDaysArray = fixedDaysData
-            ? Object.values(fixedDaysData).map((day) => capitalizeFirstLetter(day))
-            : [];
-          setFixedDays(fixedDaysArray);
-
-          setContractType(contractTypeData || "Niet gespecificeerd");
-          setMaxHoursWeek(maxHoursWeekData || 0);
-        }
-      } else {
-        console.log("Geen worker gevonden met deze user_id.");
-        setFixedDays([]);
-        setContractType("Niet gespecificeerd");
-        setMaxHoursWeek(0);
-      }
-    } catch (error) {
-      console.error("Fout bij het ophalen van worker data:", error);
-      Alert.alert(
-        "Fout",
-        "Er is een fout opgetreden bij het ophalen van uw worker gegevens."
-      );
+    if (!snapshot.exists()) {
+      console.log("Geen worker gevonden met deze user_id.");
+      setFixDays([]);
+      setContractType("Niet gespecificeerd");
+      setMaxHoursWeek(0);
+      return;
     }
-  };
+
+    // The query found some worker(s)
+    const workersData = snapshot.val();
+    console.log("WorkersData:", workersData);  // Let's see the entire object
+
+    // Since user_id should be unique, just take the first worker key
+    const workerKeys = Object.keys(workersData);
+    if (workerKeys.length === 0) {
+      console.log("Worker keys array is empty.");
+      setFixDays([]);
+      setContractType("Niet gespecificeerd");
+      setMaxHoursWeek(0);
+      return;
+    }
+
+    // Now define `worker`
+    const workerKey = workerKeys[0];
+    const worker = workersData[workerKey];
+    console.log("Worker object:", worker); // see what fields exist
+
+    // E.g. worker.fixed_days might be an object or array
+    const fixDaysData = worker.fixed_days;  
+    const contractTypeData = worker.contract_type;
+    const maxHoursWeekData = worker.max_hours_week;
+
+    console.log("fixDaysData from DB:", fixDaysData); 
+    if (fixDaysData) {
+      // If fixDaysData is an object like {0: "monday", 1: "tuesday"}
+      const fixDaysArray = Object.values(fixDaysData).map((day) => capitalizeFirstLetter(day));
+      setFixDays(fixDaysArray);
+    } else {
+      setFixDays([]);
+    }
+
+    console.log("Final fixDays state:", fixDays);  // Might still be old state if logs run too soon
+
+    setContractType(contractTypeData || "Niet gespecificeerd");
+    setMaxHoursWeek(maxHoursWeekData || 0);
+
+  } catch (error) {
+    console.error("Fout bij het ophalen van worker data:", error);
+    Alert.alert(
+      "Fout",
+      "Er is een fout opgetreden bij het ophalen van uw worker gegevens."
+    );
+  }
+};
+
 
   const handleEdit = () => {
     if (isEditing) {
-      // If currently editing, save the changes
       updateUser();
     }
     setIsEditing(!isEditing);
@@ -220,25 +241,24 @@ export default function AccountDetails({ navigation }) {
             <TextInput
               style={styles.input}
               value={user.email}
-              editable={isEditing}
               keyboardType="email-address"
-              onChangeText={(text) => handleChange("email", text)}
+              editable={false}
             />
           </View>
 
-          {/* Fixed Days */}
+          {/* Fix Days */}
           <View style={styles.inputContainer}>
-            <Text style={styles.label}>Vaste Dagen:</Text>
-            {fixedDays.length > 0 ? (
-              <View style={styles.fixedDaysList}>
-                {fixedDays.map((day, index) => (
-                  <Text key={index} style={styles.fixedDay}>
+            <Text style={styles.label}>Fix Days:</Text>
+            {fixDays.length > 0 ? (
+              <View style={styles.fixDaysList}>
+                {fixDays.map((day, index) => (
+                  <Text key={index} style={styles.fixDay}>
                     {day}
                   </Text>
                 ))}
               </View>
             ) : (
-              <Text style={styles.noFixedDays}>Geen vaste dagen ingesteld</Text>
+              <Text style={styles.noFixDays}>No fix days configured</Text>
             )}
           </View>
 
@@ -347,11 +367,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
   },
-  fixedDaysList: {
+  fixDaysList: {
     flexDirection: "row",
     flexWrap: "wrap",
   },
-  fixedDay: {
+  fixDay: {
     backgroundColor: "#FFE0B2",
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -361,7 +381,7 @@ const styles = StyleSheet.create({
     color: "#E65100",
     fontSize: 14,
   },
-  noFixedDays: {
+  noFixDays: {
     fontSize: 14,
     color: "#FF9800",
     fontStyle: "italic",
