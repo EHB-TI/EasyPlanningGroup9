@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { getDatabase, ref, get, child } from 'firebase/database'; // Importeer functies voor Realtime Database
 import { auth } from '../firebaseConfig';
+import { getAuth, sendPasswordResetEmail } from 'firebase/auth';
+
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -49,6 +51,22 @@ export default function LoginScreen({ navigation }) {
     } catch (error) {
       console.error('Login Error:', error);
       Alert.alert('Login Error', error.message);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address.');
+      return;
+    }
+  
+    try {
+      const auth = getAuth();  // Vous devez obtenir l'instance d'authentification
+      await sendPasswordResetEmail(auth, email);
+      Alert.alert('Success', 'Password reset email sent successfully!');
+    } catch (error) {
+      console.error('Password reset error:', error);
+      Alert.alert('Error', error.message);
     }
   };
 
@@ -103,9 +121,9 @@ export default function LoginScreen({ navigation }) {
           <Text style={styles.loginButtonText}>Login</Text>
         </TouchableOpacity>
 
-        {/* Forgot Password */}
-        <TouchableOpacity onPress={() => Alert.alert('Forgot Password', 'Functionality not implemented')}>
-          <Text style={styles.forgotPassword}>Wachtwoord vergeten?</Text>
+         {/* Forgot Password Button */}
+         <TouchableOpacity onPress={handleForgotPassword}>
+          <Text style={styles.forgotPassword}>Forgot Password?</Text>
         </TouchableOpacity>
       </View>
     </View>
