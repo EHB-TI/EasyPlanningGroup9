@@ -47,8 +47,7 @@ export default function ManagerHome({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.cardRow}>
-          
-<TouchableOpacity
+          <TouchableOpacity
   style={styles.card}
   onPress={() => navigation.navigate("UserPanel", { filter: "pending" })}
 >

@@ -94,16 +94,17 @@ const AdminPanelScreen = ({ route, navigation }) => {
   const fetchUsers = async (filter) => {
     try {
       setLoading(true);
-
+  
       const db = getDatabase();
       const dbRef = ref(db);
-
+  
       const usersSnapshot = await get(child(dbRef, "users"));
       if (usersSnapshot.exists()) {
         const usersData = usersSnapshot.val();
-
+  
         let filteredUsers = [];
-
+  
+        // Filter users based on the filter parameter
         Object.entries(usersData).forEach(([id, user]) => {
           if (filter === "pending" && user.status === "pending") {
             filteredUsers.push({ id, ...user });
@@ -111,16 +112,20 @@ const AdminPanelScreen = ({ route, navigation }) => {
             filteredUsers.push({ id, ...user });
           }
         });
-
+  
         setUsers(filteredUsers);
+      } else {
+        setUsers([]); // Handle case where no users are found
       }
-
+  
       setLoading(false);
     } catch (error) {
       console.error("Error fetching users:", error);
       setLoading(false);
     }
   };
+  
+  
   
 
   // ----------------------------------------------------------------
@@ -340,111 +345,119 @@ const AdminPanelScreen = ({ route, navigation }) => {
           {item.first_name} {item.last_name}
         </Text>
         {renderUserDetail("Email", item.email)}
+        {renderUserDetail("Role", item.role)}
+        {renderUserDetail("SAP Number", item.sap_number)}
   
-        {/* Role Picker */}
-        <Picker
-          selectedValue={userInput.role || ""}
-          style={styles.picker}
-          onValueChange={(value) =>
-            setUserInputs((prev) => ({
-              ...prev,
-              [item.id]: {
-                ...prev[item.id],
-                role: value,
-              },
-            }))
-          }
-        >
-          <Picker.Item label="Select Role" value="" />
-          {roleOptions.map((r) => (
-            <Picker.Item key={r} label={r} value={r} />
-          ))}
-        </Picker>
-  
-        {/* If role=worker, show additional fields */}
-        {userInput.role === "worker" && (
+        {/* Show input fields only for pending users */}
+        {filter === "pending" && (
           <>
-            {/* Contract Type Picker */}
+            {/* Role Picker */}
             <Picker
-              selectedValue={userInput.contractType || ""}
+              selectedValue={userInput.role || ""}
               style={styles.picker}
               onValueChange={(value) =>
                 setUserInputs((prev) => ({
                   ...prev,
                   [item.id]: {
                     ...prev[item.id],
-                    contractType: value,
+                    role: value,
                   },
                 }))
               }
             >
-              <Picker.Item label="Select Contract Type" value="" />
-              {contractOptions.map((ct) => (
-                <Picker.Item key={ct} label={ct} value={ct} />
+              <Picker.Item label="Select Role" value="" />
+              {roleOptions.map((r) => (
+                <Picker.Item key={r} label={r} value={r} />
               ))}
             </Picker>
   
-            {/* Fixed Days Input */}
+            {/* If role=worker, show additional fields */}
+            {userInput.role === "worker" && (
+              <>
+                {/* Contract Type Picker */}
+                <Picker
+                  selectedValue={userInput.contractType || ""}
+                  style={styles.picker}
+                  onValueChange={(value) =>
+                    setUserInputs((prev) => ({
+                      ...prev,
+                      [item.id]: {
+                        ...prev[item.id],
+                        contractType: value,
+                      },
+                    }))
+                  }
+                >
+                  <Picker.Item label="Select Contract Type" value="" />
+                  {contractOptions.map((ct) => (
+                    <Picker.Item key={ct} label={ct} value={ct} />
+                  ))}
+                </Picker>
+  
+                {/* Fixed Days Input */}
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter Fixed Days (e.g., monday,tuesday)"
+                  value={userInput.fixDay || ""}
+                  onChangeText={(text) =>
+                    setUserInputs((prev) => ({
+                      ...prev,
+                      [item.id]: {
+                        ...prev[item.id],
+                        fixDay: text,
+                      },
+                    }))
+                  }
+                />
+  
+                {/* Max Hours/Week */}
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter Max Hours per Week"
+                  keyboardType="numeric"
+                  value={userInput.maxHoursWeek || ""}
+                  onChangeText={(text) =>
+                    setUserInputs((prev) => ({
+                      ...prev,
+                      [item.id]: {
+                        ...prev[item.id],
+                        maxHoursWeek: text,
+                      },
+                    }))
+                  }
+                />
+              </>
+            )}
+  
+            {/* SAP Number */}
             <TextInput
               style={styles.textInput}
-              placeholder="Enter Fixed Days (e.g., monday,tuesday)"
-              value={userInput.fixDay || ""}
+              placeholder="Enter SAP Number"
+              value={userInput.sapNumber || ""}
               onChangeText={(text) =>
                 setUserInputs((prev) => ({
                   ...prev,
                   [item.id]: {
                     ...prev[item.id],
-                    fixDay: text,
+                    sapNumber: text,
                   },
                 }))
               }
             />
   
-            {/* Max Hours/Week */}
-            <TextInput
-              style={styles.textInput}
-              placeholder="Enter Max Hours per Week"
-              keyboardType="numeric"
-              value={userInput.maxHoursWeek || ""}
-              onChangeText={(text) =>
-                setUserInputs((prev) => ({
-                  ...prev,
-                  [item.id]: {
-                    ...prev[item.id],
-                    maxHoursWeek: text,
-                  },
-                }))
-              }
-            />
+            {/* Approve Button */}
+            <TouchableOpacity
+              style={styles.approveButton}
+              onPress={() => handleApproveUser(item)}
+            >
+              <Text style={styles.buttonText}>Approve</Text>
+            </TouchableOpacity>
           </>
         )}
-  
-        {/* SAP Number */}
-        <TextInput
-          style={styles.textInput}
-          placeholder="Enter SAP Number"
-          value={userInput.sapNumber || ""}
-          onChangeText={(text) =>
-            setUserInputs((prev) => ({
-              ...prev,
-              [item.id]: {
-                ...prev[item.id],
-                sapNumber: text,
-              },
-            }))
-          }
-        />
-  
-        {/* Approve Button */}
-        <TouchableOpacity
-          style={styles.approveButton}
-          onPress={() => handleApproveUser(item)}
-        >
-          <Text style={styles.buttonText}>Approve</Text>
-        </TouchableOpacity>
       </View>
     );
   };
+  
   
 
   // ----------------------------------------------------------------
@@ -479,17 +492,17 @@ const AdminPanelScreen = ({ route, navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-        >
-          <Ionicons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.mainTitle}>
-          {filter === "pending" ? "Pending Accounts" : "Approved Accounts"}
-        </Text>
-      </View>
+<View style={styles.header}>
+  <TouchableOpacity
+    onPress={() => navigation.goBack()}
+    style={styles.backButton}
+  >
+    <Ionicons name="arrow-back" size={24} color="#333" />
+  </TouchableOpacity>
+  <Text style={styles.mainTitle}>
+    {filter === "pending" ? "Pending Accounts" : "Approved Accounts"}
+  </Text>
+</View>
 
       <TextInput
         style={styles.searchInput}
@@ -498,17 +511,18 @@ const AdminPanelScreen = ({ route, navigation }) => {
         onChangeText={handleSearch}
       />
 
-      <FlatList
-        data={users}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => fetchUsers(filter)}
-          />
-        }
-      />
+<FlatList
+  data={users}
+  keyExtractor={(item) => item.id}
+  renderItem={renderItem}
+  refreshControl={
+    <RefreshControl
+      refreshing={refreshing}
+      onRefresh={() => fetchUsers(filter)}
+    />
+  }
+/>
+
     </SafeAreaView>
   );
 };
