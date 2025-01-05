@@ -68,7 +68,7 @@ export const handleFileUpload = async () => {
         return;
       }
 
-      // Step 6: Validate required columns
+      // Step 6: Flexible header matching
       const headers = jsonData[0]; // First row of the sheet
       if (!headers) {
         Alert.alert('Error', 'The sheet does not contain any headers.');
@@ -76,13 +76,12 @@ export const handleFileUpload = async () => {
         return;
       }
 
-      // Normalize headers for consistency
-      const normalizedHeaders = headers.map((header) => header?.trim().toLowerCase());
+      const findColumnIndex = (headerName) =>
+        headers.findIndex((header) => header?.trim().toLowerCase() === headerName.toLowerCase());
 
-      // Check for required columns
-      const nameIndex = normalizedHeaders.indexOf('naam');
-      const gem2024Index = normalizedHeaders.indexOf('gem. 2024');
-      const gemLast3MonthsIndex = normalizedHeaders.indexOf('gem. laatste 3 maand');
+      const nameIndex = findColumnIndex('naam');
+      const gem2024Index = findColumnIndex('gem. 2024');
+      const gemLast3MonthsIndex = findColumnIndex('gem. laatste 3 maand');
 
       if (nameIndex === -1 || gem2024Index === -1 || gemLast3MonthsIndex === -1) {
         Alert.alert(

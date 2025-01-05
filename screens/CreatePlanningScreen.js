@@ -12,7 +12,7 @@ import { ref, get, child, update, remove } from 'firebase/database';
 import { realtimeDB } from '../firebaseConfig';
 import { v4 as uuidv4 } from 'uuid';
 
-import { assignUsersToShifts } from './utils/assignmentLogic';
+import { assignUsersToShifts } from '../scripts/assignmentLogic';
 
 export default function CreatePlanningScreen({ navigation, route }) {
   const { selectedWeek } = route.params || {};
