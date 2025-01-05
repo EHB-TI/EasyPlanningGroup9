@@ -47,20 +47,19 @@ export default function ManagerHome({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.cardRow}>
-            <TouchableOpacity style={styles.card} onPress={() => handleNavigate('UserPanel')}>
-              <View style={styles.cardIcon}>
-                <Entypo name="users" size={32} color="#4CAF50" />
-              </View>
-              <Text style={styles.cardTitle}>Pending Accounts</Text>
-              <Text style={styles.cardNumber}>{pendingCount}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.card} onPress={() => handleNavigate('ShiftRequestScreen')}>
-              <View style={styles.cardIcon}>
-                <Entypo name="clipboard" size={32} color="#FF6F61" />
-              </View>
-              <Text style={styles.cardTitle}>Shift Requests</Text>
-              <Text style={styles.cardNumber}>2</Text>
-            </TouchableOpacity>
+          
+<TouchableOpacity
+  style={styles.card}
+  onPress={() => navigation.navigate("UserPanel", { filter: "pending" })}
+>
+  <View style={styles.cardIcon}>
+    <Entypo name="users" size={32} color="#4CAF50" />
+  </View>
+  <Text style={styles.cardTitle}>Pending Accounts</Text>
+  <Text style={styles.cardNumber}>{pendingCount}</Text>
+</TouchableOpacity>
+
+            
           </View>
         </View>
 
@@ -68,17 +67,14 @@ export default function ManagerHome({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.cardRow}>
-            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('UserPanel')}>
-              <Text style={styles.actionCardText}>Validate Accounts</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('AdminPanel')}>
-              <Text style={styles.actionCardText}>Admin Panel</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.cardRow}>
-            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('ManageShiftRequestScreen')}>
-              <Text style={styles.actionCardText}>Manage Shifts</Text>
-            </TouchableOpacity>
+          <TouchableOpacity
+  style={styles.actionCard}
+  onPress={() => navigation.navigate("UserPanel", { filter: "approved" })}
+>
+  <Text style={styles.actionCardText}>Approved Accounts</Text>
+</TouchableOpacity>
+
+            
             <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('AddWorkersNeededScreen')}>
               <Text style={styles.actionCardText}>Add Workers</Text>
             </TouchableOpacity>

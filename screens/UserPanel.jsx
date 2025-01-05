@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  SectionList,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
@@ -23,25 +23,27 @@ import {
   set,
 } from "firebase/database";
 
-const AdminPanelScreen = () => {
-  const navigation = useNavigation();
+const AdminPanelScreen = ({ route, navigation }) => {
+  
 
   // ----------------------------------------------------------------
   // STATE
   // ----------------------------------------------------------------
   const [searchQuery, setSearchQuery] = useState("");
+  const [users, setUsers] = useState([]);
   const [filteredSections, setFilteredSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sections, setSections] = useState([]);
-  const [expandedSections, setExpandedSections] = useState({});
+  
+  const [expandedSections, setExpandedSections] = useState({
+    "Pending Users": true,  // Auto-expand Pending Users
+
+    
+  });
   const [refreshing, setRefreshing] = useState(false);
 
   // State for inputs
-  const [role, setRole] = useState("");
-  const [contractType, setContractType] = useState("");
-  const [fixDay, setFixDay] = useState("");
-  const [maxHoursWeek, setMaxHoursWeek] = useState("");
-  const [sapNumber, setSapNumber] = useState("");
+  const [userInputs, setUserInputs] = useState({});
 
   // State for editing
   const [editingUserId, setEditingUserId] = useState(null);
@@ -77,79 +79,40 @@ const AdminPanelScreen = () => {
     CDD: 2,
     Student: 3,
   };
-
+  const filter = route.params?.filter || "all";
   // ----------------------------------------------------------------
   // LIFECYCLE: FETCH USERS ONCE COMPONENT MOUNTS
   // ----------------------------------------------------------------
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(filter);
+  }, [filter]);
+  
 
   // ----------------------------------------------------------------
   // FETCH USERS
   // ----------------------------------------------------------------
-  const fetchUsers = async () => {
+  const fetchUsers = async (filter) => {
     try {
       setLoading(true);
 
       const db = getDatabase();
       const dbRef = ref(db);
 
-      // Fetch all users
       const usersSnapshot = await get(child(dbRef, "users"));
       if (usersSnapshot.exists()) {
         const usersData = usersSnapshot.val();
 
-        const pendingUsers = [];
-        const approvedUsers = [];
+        let filteredUsers = [];
 
-        // Fetch all workers data once
-        const workersSnapshot = await get(child(dbRef, "workers"));
-        const workersData = workersSnapshot.exists() ? workersSnapshot.val() : {};
-
-        // Separate users into pending / approved
         Object.entries(usersData).forEach(([id, user]) => {
-          if (user.status === "pending") {
-            pendingUsers.push({ id, ...user });
-          } else if (user.status === "approved") {
-            // If user is a worker and worker data exists, merge
-            if (user.role === "worker" && user.worker_id && workersData[user.worker_id]) {
-              approvedUsers.push({
-                id,
-                ...user,
-                ...workersData[user.worker_id],
-              });
-            }
-            // If user is a worker but no matching worker data
-            else if (user.role === "worker") {
-              console.warn(`Worker data missing or incomplete for user ID: ${id}`);
-              approvedUsers.push({
-                id,
-                ...user,
-                contract_type: "N/A",
-                fixed_days: [],
-                max_hours_week: "N/A",
-              });
-            } 
-            // Otherwise, just push the user data
-            else {
-              approvedUsers.push({ id, ...user });
-            }
+          if (filter === "pending" && user.status === "pending") {
+            filteredUsers.push({ id, ...user });
+          } else if (filter === "approved" && user.status === "approved") {
+            filteredUsers.push({ id, ...user });
           }
         });
 
-        // Sort approved users by contract_type (CDI, CDD, Student)
-        approvedUsers.sort((a, b) => {
-          const aOrder = a.contract_type ? contractOrder[a.contract_type] || 99 : 99;
-          const bOrder = b.contract_type ? contractOrder[b.contract_type] || 99 : 99;
-          return aOrder - bOrder;
-        });
-
-        // Set up sections
-        setSections([
-          { title: "Pending Users", data: pendingUsers },
-          { title: "Approved Users", data: approvedUsers },
-        ]);
+        setUsers(filteredUsers);
       }
 
       setLoading(false);
@@ -158,28 +121,31 @@ const AdminPanelScreen = () => {
       setLoading(false);
     }
   };
+  
 
   // ----------------------------------------------------------------
   // APPROVE USER
   // ----------------------------------------------------------------
   const handleApproveUser = async (user) => {
-    if (!sapNumber) {
+    const userInput = userInputs[user.id] || {};
+  
+    if (!userInput.sapNumber) {
       Alert.alert("Error", "Please provide an SAP number.");
       return;
     }
-
-    if (role === "worker") {
-      if (!fixDay || !contractType || !maxHoursWeek) {
+  
+    if (userInput.role === "worker") {
+      if (!userInput.fixDay || !userInput.contractType || !userInput.maxHoursWeek) {
         Alert.alert("Error", "Please fill in all fields for the worker before approving.");
         return;
       }
-
-      const enteredDays = fixDay
+  
+      const enteredDays = userInput.fixDay
         .toLowerCase()
         .split(",")
         .map((day) => day.trim());
       const invalidDays = enteredDays.filter((day) => !validDays.includes(day));
-
+  
       if (invalidDays.length > 0) {
         Alert.alert(
           "Invalid Fixed Days",
@@ -187,92 +153,89 @@ const AdminPanelScreen = () => {
         );
         return;
       }
-
+  
       try {
-        // Generate a random worker ID
         const workerId = `worker_${Math.random().toString(36).substr(2, 9)}`;
-
-        // Update the workers node with new worker data
+  
         const workersRef = ref(getDatabase(), `workers/${workerId}`);
         await set(workersRef, {
           user_id: user.id,
-          contract_type: contractType,
+          contract_type: userInput.contractType,
           fixed_days: enteredDays,
-          max_hours_week: parseInt(maxHoursWeek, 10),
+          max_hours_week: parseInt(userInput.maxHoursWeek, 10),
         });
-
-        // Update the user node
+  
         const userRef = ref(getDatabase(), `users/${user.id}`);
         await update(userRef, {
           status: "approved",
-          role,
-          sap_number: sapNumber,
+          role: userInput.role,
+          sap_number: userInput.sapNumber,
           worker_id: workerId,
         });
-
+  
         Alert.alert("Success", `${user.first_name} has been approved and added as a worker.`);
-        fetchUsers();
-        resetFields();
+        fetchUsers(filter);
+        resetFields(user.id);
       } catch (error) {
         console.error("Error approving worker:", error);
         Alert.alert("Error", "Failed to approve the worker.");
       }
-    } else if (role === "manager") {
+    } else if (userInput.role === "manager") {
       try {
-        // Update user node for manager
         const userRef = ref(getDatabase(), `users/${user.id}`);
         await update(userRef, {
           status: "approved",
-          role,
-          sap_number: sapNumber,
+          role: userInput.role,
+          sap_number: userInput.sapNumber,
         });
-
+  
         Alert.alert("Success", `${user.first_name} has been approved as a manager.`);
-        fetchUsers();
-        resetFields();
+        fetchUsers(filter);
+        resetFields(user.id);
       } catch (error) {
         console.error("Error approving manager:", error);
         Alert.alert("Error", "Failed to approve the manager.");
       }
     }
   };
+  
 
   // ----------------------------------------------------------------
   // RESET FIELDS AFTER APPROVAL
   // ----------------------------------------------------------------
-  const resetFields = () => {
-    setFixDay("");
-    setContractType("");
-    setMaxHoursWeek("");
-    setSapNumber("");
-    setRole("");
+  const resetFields = (userId) => {
+    setUserInputs((prev) => ({
+      ...prev,
+      [userId]: {
+        role: "",
+        contractType: "",
+        fixDay: "",
+        maxHoursWeek: "",
+        sapNumber: "",
+      },
+    }));
   };
 
   // ----------------------------------------------------------------
   // SEARCH USERS
   // ----------------------------------------------------------------
   const handleSearch = (query) => {
-    const lowerCaseQuery = query.toLowerCase();
+    setSearchQuery(query);
     if (!query) {
-      // Restore original sections
-      setFilteredSections(sections);
+      fetchUsers(filter);
       return;
     }
 
-    // Filter each section’s data
-    const newFilteredSections = sections.map((section) => {
-      const filteredData = section.data.filter((user) =>
-        Object.values(user).some((val) =>
-          String(val).toLowerCase().includes(lowerCaseQuery)
-        )
-      );
-      return { ...section, data: filteredData };
-    });
-
-    // Only keep sections that have at least 1 result
-    const nonEmpty = newFilteredSections.filter((sec) => sec.data.length > 0);
-    setFilteredSections(nonEmpty);
+    const lowerCaseQuery = query.toLowerCase();
+    const filteredUsers = users.filter((user) =>
+      Object.values(user).some((val) =>
+        String(val).toLowerCase().includes(lowerCaseQuery)
+      )
+    );
+    setUsers(filteredUsers);
   };
+
+  
 
   // ----------------------------------------------------------------
   // TOGGLE SECTION EXPANSION
@@ -368,241 +331,121 @@ const AdminPanelScreen = () => {
   // ----------------------------------------------------------------
   // RENDER ITEM
   // ----------------------------------------------------------------
-  const renderItem = ({ item, section }) => {
-    if (section.title === "Pending Users") {
-      // PENDING USERS
-      return (
-        <View style={styles.userCard}>
-          <Text style={styles.userName}>
-            {item.first_name} {item.last_name}
-          </Text>
-          {renderUserDetail("Email", item.email)}
-
-          {/* Role Picker */}
-          <Picker
-            selectedValue={role}
-            style={styles.picker}
-            onValueChange={(value) => setRole(value)}
-          >
-            <Picker.Item label="Select Role" value="" />
-            {roleOptions.map((r) => (
-              <Picker.Item key={r} label={r} value={r} />
-            ))}
-          </Picker>
-
-          {/* If role=worker, show worker-specific fields */}
-          {role === "worker" && (
-            <>
-              {/* Contract Type Picker */}
-              <Picker
-                selectedValue={contractType}
-                style={styles.picker}
-                onValueChange={(value) => setContractType(value)}
-              >
-                <Picker.Item label="Select Contract Type" value="" />
-                {contractOptions.map((ct) => (
-                  <Picker.Item key={ct} label={ct} value={ct} />
-                ))}
-              </Picker>
-
-              {/* Fixed Days Input */}
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter Fixed Days (e.g., monday,tuesday)"
-                value={fixDay}
-                onChangeText={(text) => setFixDay(text)}
-              />
-
-              {/* Max Hours/week */}
-              <TextInput
-                style={styles.textInput}
-                placeholder="Enter Max Hours per Week"
-                keyboardType="numeric"
-                value={maxHoursWeek}
-                onChangeText={(text) => setMaxHoursWeek(text)}
-              />
-            </>
-          )}
-
-          {/* SAP Number */}
-          <TextInput
-            style={styles.textInput}
-            placeholder="Enter SAP Number"
-            value={sapNumber}
-            onChangeText={(text) => setSapNumber(text)}
-          />
-
-          {/* Approve Button */}
-          <TouchableOpacity
-            style={styles.approveButton}
-            onPress={() => handleApproveUser(item)}
-          >
-            <Text style={styles.buttonText}>Approve</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    } // end if (section.title === "Pending Users")
-
-    // ----------------------------------------------------------------
-    // APPROVED USERS
-    // ----------------------------------------------------------------
-    if (section.title === "Approved Users") {
-      // If this user is in "editing" mode
-      if (editingUserId === item.id) {
-        return (
-          <View style={styles.userCard}>
-            {/* Editable Fields */}
-            <TextInput
-              style={styles.textInput}
-              placeholder="First Name"
-              value={editFields.first_name}
-              onChangeText={(text) =>
-                setEditFields((prev) => ({ ...prev, first_name: text }))
-              }
-            />
-            <TextInput
-              style={styles.textInput}
-              placeholder="Last Name"
-              value={editFields.last_name}
-              onChangeText={(text) =>
-                setEditFields((prev) => ({ ...prev, last_name: text }))
-              }
-            />
-            <TextInput
-              style={styles.textInput}
-              placeholder="Phone"
-              value={editFields.phone}
-              onChangeText={(text) =>
-                setEditFields((prev) => ({ ...prev, phone: text }))
-              }
-            />
-
-            {/* Role Picker */}
+  const renderItem = ({ item }) => {
+    const userInput = userInputs[item.id] || {};
+  
+    return (
+      <View style={styles.userCard}>
+        <Text style={styles.userName}>
+          {item.first_name} {item.last_name}
+        </Text>
+        {renderUserDetail("Email", item.email)}
+  
+        {/* Role Picker */}
+        <Picker
+          selectedValue={userInput.role || ""}
+          style={styles.picker}
+          onValueChange={(value) =>
+            setUserInputs((prev) => ({
+              ...prev,
+              [item.id]: {
+                ...prev[item.id],
+                role: value,
+              },
+            }))
+          }
+        >
+          <Picker.Item label="Select Role" value="" />
+          {roleOptions.map((r) => (
+            <Picker.Item key={r} label={r} value={r} />
+          ))}
+        </Picker>
+  
+        {/* If role=worker, show additional fields */}
+        {userInput.role === "worker" && (
+          <>
+            {/* Contract Type Picker */}
             <Picker
-              selectedValue={editFields.role}
+              selectedValue={userInput.contractType || ""}
               style={styles.picker}
               onValueChange={(value) =>
-                setEditFields((prev) => ({ ...prev, role: value }))
+                setUserInputs((prev) => ({
+                  ...prev,
+                  [item.id]: {
+                    ...prev[item.id],
+                    contractType: value,
+                  },
+                }))
               }
             >
-              <Picker.Item label="Select Role" value="" />
-              {roleOptions.map((r) => (
-                <Picker.Item key={r} label={r} value={r} />
+              <Picker.Item label="Select Contract Type" value="" />
+              {contractOptions.map((ct) => (
+                <Picker.Item key={ct} label={ct} value={ct} />
               ))}
             </Picker>
-
-            {/* If worker, show contract details */}
-            {editFields.role === "worker" && (
-              <>
-                <Picker
-                  selectedValue={editFields.contract_type}
-                  style={styles.picker}
-                  onValueChange={(value) =>
-                    setEditFields((prev) => ({
-                      ...prev,
-                      contract_type: value,
-                    }))
-                  }
-                >
-                  <Picker.Item label="Select Contract Type" value="" />
-                  {contractOptions.map((ct) => (
-                    <Picker.Item key={ct} label={ct} value={ct} />
-                  ))}
-                </Picker>
-
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Fixed Days (e.g., monday,tuesday)"
-                  value={editFields.fixed_days}
-                  onChangeText={(text) =>
-                    setEditFields((prev) => ({ ...prev, fixed_days: text }))
-                  }
-                />
-
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="Max Hours/Week"
-                  keyboardType="numeric"
-                  value={editFields.max_hours_week}
-                  onChangeText={(text) =>
-                    setEditFields((prev) => ({
-                      ...prev,
-                      max_hours_week: text,
-                    }))
-                  }
-                />
-              </>
-            )}
-
-            {/* SAP Number */}
+  
+            {/* Fixed Days Input */}
             <TextInput
               style={styles.textInput}
-              placeholder="Enter SAP Number"
-              value={editFields.sap_number}
+              placeholder="Enter Fixed Days (e.g., monday,tuesday)"
+              value={userInput.fixDay || ""}
               onChangeText={(text) =>
-                setEditFields((prev) => ({ ...prev, sap_number: text }))
+                setUserInputs((prev) => ({
+                  ...prev,
+                  [item.id]: {
+                    ...prev[item.id],
+                    fixDay: text,
+                  },
+                }))
               }
             />
-
-            {/* Save & Cancel */}
-            <View style={styles.editButtonsContainer}>
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={() => handleSaveEdit(item)}
-              >
-                <Text style={styles.buttonText}>Save</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.cancelButton}
-                onPress={handleCancelEdit}
-              >
-                <Text style={styles.buttonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        );
-      } // end if editingUserId === item.id
-
-      // ----------------------------------------------------------------
-      // NOT EDITING: SHOW READ-ONLY FIELDS
-      // ----------------------------------------------------------------
-      return (
-        <View style={styles.userCard}>
-          <Text style={styles.userName}>
-            {item.first_name} {item.last_name}
-          </Text>
-          {renderUserDetail("Email", item.email)}
-          {renderUserDetail("Role", item.role)}
-
-          {item.role === "worker" && (
-            <>
-              {renderUserDetail("Contract Type", item.contract_type)}
-              {renderUserDetail(
-                "Fixed Days",
-                Array.isArray(item.fixed_days) && item.fixed_days.length > 0
-                  ? item.fixed_days.join(", ")
-                  : null
-              )}
-              {renderUserDetail("Max Hours/Week", item.max_hours_week)}
-            </>
-          )}
-          {renderUserDetail("SAP Number", item.sap_number)}
-
-          {/* Edit Button */}
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => handleEdit(item)}
-          >
-            <Ionicons name="pencil" size={20} color="#fff" />
-            <Text style={styles.editButtonText}>Edit</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    } // end if (section.title === "Approved Users")
-
-    // If for some reason section.title doesn't match
-    return null;
+  
+            {/* Max Hours/Week */}
+            <TextInput
+              style={styles.textInput}
+              placeholder="Enter Max Hours per Week"
+              keyboardType="numeric"
+              value={userInput.maxHoursWeek || ""}
+              onChangeText={(text) =>
+                setUserInputs((prev) => ({
+                  ...prev,
+                  [item.id]: {
+                    ...prev[item.id],
+                    maxHoursWeek: text,
+                  },
+                }))
+              }
+            />
+          </>
+        )}
+  
+        {/* SAP Number */}
+        <TextInput
+          style={styles.textInput}
+          placeholder="Enter SAP Number"
+          value={userInput.sapNumber || ""}
+          onChangeText={(text) =>
+            setUserInputs((prev) => ({
+              ...prev,
+              [item.id]: {
+                ...prev[item.id],
+                sapNumber: text,
+              },
+            }))
+          }
+        />
+  
+        {/* Approve Button */}
+        <TouchableOpacity
+          style={styles.approveButton}
+          onPress={() => handleApproveUser(item)}
+        >
+          <Text style={styles.buttonText}>Approve</Text>
+        </TouchableOpacity>
+      </View>
+    );
   };
+  
 
   // ----------------------------------------------------------------
   // RENDER SECTION HEADER
@@ -636,35 +479,34 @@ const AdminPanelScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
           <Ionicons name="arrow-back" size={24} color="#333" />
         </TouchableOpacity>
-        <Text style={styles.mainTitle}>Admin Panel</Text>
+        <Text style={styles.mainTitle}>
+          {filter === "pending" ? "Pending Accounts" : "Approved Accounts"}
+        </Text>
       </View>
 
-      {/* Search Input */}
       <TextInput
         style={styles.searchInput}
         placeholder="Search users..."
         value={searchQuery}
-        onChangeText={(text) => {
-          setSearchQuery(text);
-          handleSearch(text);
-        }}
+        onChangeText={handleSearch}
       />
 
-      {/* SectionList */}
-      <SectionList
-        sections={searchQuery ? filteredSections : sections}
+      <FlatList
+        data={users}
         keyExtractor={(item) => item.id}
-        renderItem={({ item, section }) =>
-          expandedSections[section.title] ? renderItem({ item, section }) : null
-        }
-        renderSectionHeader={renderSectionHeader}
+        renderItem={renderItem}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={fetchUsers} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => fetchUsers(filter)}
+          />
         }
       />
     </SafeAreaView>

@@ -14,7 +14,6 @@ import WorkerHome from './screens/WorkerHome';
 import ManagerHome from './screens/ManagerHome';
 import WorkerMijnplanning from './screens/WorkerMijnplanning';
 import WorkerSettings from './screens/WorkerSettings';
-import ManageShiftRequestScreen from './screens/ManageShiftRequestScreen';
 import AddWorkersNeededScreen from './screens/AddWorkersNeededScreen';
 import WorkerAccountDetails from './screens/WorkerAccountDetails';
 import UserPanel from './screens/UserPanel';
@@ -78,7 +77,6 @@ function ManagerTabs() {
       })}
     >
       <Tab.Screen name="ManagerHome" component={ManagerHome} options={{ headerShown: false }} />
-      <Tab.Screen name="ManageShiftRequestScreen" component={ManageShiftRequestScreen} options={{ headerShown: false }} />
       <Tab.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} options={{ headerShown: false }} />
       
 
