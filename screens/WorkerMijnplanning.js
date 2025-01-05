@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { getDatabase, ref, onValue } from "firebase/database";
-
+import { getAuth } from "firebase/auth";
 export default function WorkerMijnplanning({ navigation }) {
   // Huidige datum
   const today = new Date();
@@ -22,15 +22,22 @@ export default function WorkerMijnplanning({ navigation }) {
   const [assignments, setAssignments] = useState([]);
 
   // Gebruikers-ID (vervang met echte ID, bijvoorbeeld auth.currentUser.uid)
-  const userId = "4JBV6wpXnTO8saAosEz4FduU5eH3";
+  const auth = getAuth();
+const userId = auth.currentUser ? auth.currentUser.uid : null;
 
   // Dagen van de week in het Nederlands
   const daysOfWeek = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"];
 
   // ------------------ DATA OPHALEN ------------------
   useEffect(() => {
+    if (!userId) {
+      Alert.alert("Error", "No user is logged in. Please log in to view your planning.");
+      navigation.navigate("Login"); // Redirect to the login screen
+      return;
+    }
+  
     const db = getDatabase();
-
+  
     // Shifts ophalen
     const shiftsRef = ref(db, "shifts");
     onValue(shiftsRef, (snapshot) => {
@@ -46,20 +53,20 @@ export default function WorkerMijnplanning({ navigation }) {
       }
     });
 
-    // Applications ophalen
     const appsRef = ref(db, "applications");
-    onValue(appsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        const appsArray = Object.entries(data).map(([id, obj]) => ({
-          id,
-          ...obj,
-        }));
-        setApplications(appsArray);
-      } else {
-        setApplications([]);
-      }
-    });
+  onValue(appsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const data = snapshot.val();
+      const appsArray = Object.entries(data).map(([id, obj]) => ({
+        id,
+        ...obj,
+      }));
+      setApplications(appsArray);
+    } else {
+      setApplications([]);
+    }
+  });
+
 
     // Assignments ophalen
     const assignRef = ref(db, "assignments");
@@ -75,7 +82,7 @@ export default function WorkerMijnplanning({ navigation }) {
         setAssignments([]);
       }
     });
-  }, []);
+  }, [userId]);
 
   // ------------------ CALENDAR LOGICA ------------------
   const generateDaysInMonth = (month, year) => {
