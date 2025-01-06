@@ -20,7 +20,8 @@ import UserPanel from './screens/UserPanel';
 import ApplicationsScreen from "./screens/ApplicationsScreen";
 import CreatePlanningScreen from "./screens/CreatePlanningScreen";
 import AdminPanel from "./screens/AdminPanel";
-import WorkerInstellingen from "./screens/WorkerInstellingen"
+import WorkerInstellingen from "./screens/WorkerInstellingen";
+import ManagerCalendar from "./screens/ManagerCalendar";
 
 
 
@@ -77,8 +78,9 @@ function ManagerTabs() {
       })}
     >
       <Tab.Screen name="ManagerHome" component={ManagerHome} options={{ headerShown: false }} />
-      <Tab.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} options={{ headerShown: false }} />
-      
+      <Tab.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} initialParams={{weekId: `week_${new Date().toISOString().split('T')[0]}`, selectedDate: new Date().toISOString().split('T')[0],}}options={{ headerShown: false }}
+/>
+
 
     </Tab.Navigator>
   );
@@ -102,7 +104,8 @@ export default function App() {
         <Stack.Screen name="WorkerSettings" component={WorkerSettings} options={{ headerShown: false }} />
         <Stack.Screen name="UserPanel" component={UserPanel} options={{ headerShown: false }} />
         <Stack.Screen name="AdminPanel" component={AdminPanel} options={{ headerShown: false }} />
-
+        <Stack.Screen name="ManagerCalendar" component={ManagerCalendar} options={{ headerShown: false }} />
+        <Stack.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} options={{ headerShown: false }} />
 
         {/* Newly added ApplicationsScreen */}
         <Stack.Screen name="ApplicationsScreen" component={ApplicationsScreen} options={{ headerShown: false }} />
