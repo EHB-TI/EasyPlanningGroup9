@@ -12,19 +12,19 @@ import {
 import { ref, onValue, update, get } from "firebase/database"; 
 import { realtimeDB } from "../firebaseConfig"; // Ensure this path is correct
 
-export default function AddWorkersNeededScreen({ navigation }) {
+export default function AddWorkersNeededScreen({ route, navigation }) {
+  const { weekId, selectedDate } = route.params || { weekId: null, selectedDate: null };
   const [weeks, setWeeks] = useState([]);
   const [currentWeekIndex, setCurrentWeekIndex] = useState(null);
   const [shifts, setShifts] = useState({});
   const [loadingWeeks, setLoadingWeeks] = useState(true);
   const [loadingShifts, setLoadingShifts] = useState(true);
 
-  // Fetch weeks and set the default week
   useEffect(() => {
     const weeksRef = ref(realtimeDB, "weeks");
-    const unsubscribe = onValue(weeksRef, (snapshot) => {
+
+    onValue(weeksRef, (snapshot) => {
       const data = snapshot.val() || {};
-      // Map weeks to include week_id
       const weeksArray = Object.keys(data).map((key) => ({
         week_id: key,
         ...data[key],
@@ -38,21 +38,28 @@ export default function AddWorkersNeededScreen({ navigation }) {
       setWeeks(sortedWeeks);
       setLoadingWeeks(false);
 
-      // Find the first week with status "open"
-      const openWeekIndex = sortedWeeks.findIndex((week) => week.status === "open");
-      if (openWeekIndex !== -1) {
-        setCurrentWeekIndex(openWeekIndex);
+      // Automatically select the current week
+      const currentWeek = sortedWeeks.find((week) => week.week_id === weekId);
+      if (currentWeek) {
+        setCurrentWeekIndex(sortedWeeks.indexOf(currentWeek));
       } else {
-        // Optionally, handle the case where no open week exists
-        setCurrentWeekIndex(null);
-        Alert.alert("Info", "No open weeks available.");
+        Alert.alert("Error", "Week not found in the database.");
+        navigation.goBack();
       }
     });
+  }, [weekId]);
 
-    return () => unsubscribe();
-  }, []);
-
-  // Fetch shifts for the selected week
+  
+  
+  useEffect(() => {
+    if (!weekId) {
+      Alert.alert("Error", "Week ID is missing. Returning to the previous screen.");
+      navigation.goBack();
+      return;
+    }
+  }, [weekId]);
+  
+  
   useEffect(() => {
     if (currentWeekIndex === null || weeks.length === 0) return;
 
@@ -60,9 +67,8 @@ export default function AddWorkersNeededScreen({ navigation }) {
     if (!selectedWeek) return;
 
     setLoadingShifts(true);
-
     const shiftsRef = ref(realtimeDB, "shifts");
-    const unsubscribe = onValue(shiftsRef, (snapshot) => {
+    onValue(shiftsRef, (snapshot) => {
       const data = snapshot.val() || {};
       const filteredShifts = Object.keys(data)
         .filter((shiftId) => data[shiftId].week_id === selectedWeek.week_id)
@@ -74,10 +80,11 @@ export default function AddWorkersNeededScreen({ navigation }) {
       setShifts(filteredShifts);
       setLoadingShifts(false);
     });
-
-    return () => unsubscribe();
   }, [weeks, currentWeekIndex]);
 
+
+  
+  
   // Determine if all relevant shifts have max_workers > 0
   const canMakePlanning = Object.values(shifts)
     .filter((shift) => shift.status !== "closed") // Exclude closed shifts

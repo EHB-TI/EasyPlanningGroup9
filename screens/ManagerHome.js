@@ -87,10 +87,11 @@ export default function ManagerHome({ navigation }) {
     setShowDatePicker(false);
     if (selectedDate) {
       const startOfWeek = new Date(selectedDate);
-      startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay() + 1); // Définir au lundi
+      startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay() + 1); // Set to Monday
       setSelectedWeek(startOfWeek);
     }
   };
+  
 
   return (
     <View style={styles.container}>
@@ -128,8 +129,28 @@ export default function ManagerHome({ navigation }) {
               <Text style={styles.actionCardText}>Approved Accounts</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('AddWorkersNeededScreen')}>
-              <Text style={styles.actionCardText}>Add Workers</Text>
+            <TouchableOpacity
+  style={styles.actionCard}
+  onPress={() => {
+    const today = new Date();
+    const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 1)); // Set to Monday of the current week
+    const weekId = `week_${startOfWeek.toISOString().split('T')[0]}`;
+    const selectedDate = startOfWeek.toISOString().split('T')[0];
+
+    navigation.navigate('AddWorkersNeededScreen', {
+      weekId,
+      selectedDate,
+    });
+  }}
+>
+  <Text style={styles.actionCardText}>Add Workers</Text>
+</TouchableOpacity>
+
+
+
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('ManagerCalendar')}>
+              <Text style={styles.actionCardText}>View Calendar</Text>
             </TouchableOpacity>
           </View>
         </View>
