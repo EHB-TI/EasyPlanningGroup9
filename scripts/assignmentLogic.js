@@ -9,7 +9,7 @@ import { update, ref } from 'firebase/database';
  * @param {Object} applications - All applications from the database.
  * @param {Date} selectedWeek - Start of the selected week.
  * @param {Object} databaseRef - Firebase database reference for updates.
- * @returns {Object} { pendingAssignments, workerUpdates }
+ * @returns {Object} { pendingAssignments }
  */
 export async function assignUsersToShifts(
   shifts,
@@ -32,12 +32,11 @@ export async function assignUsersToShifts(
 
   if (filteredShifts.length === 0) {
     console.log('[assignUsersToShifts] No shifts found for the selected week.');
-    return { pendingAssignments: {}, workerUpdates: {} };
+    return { pendingAssignments: {} };
   }
 
   const pendingAssignments = {};
   const applicationStatusUpdates = {};
-  const assignmentsUpdates = {};
 
   for (const [shiftId, shift] of filteredShifts) {
     const requiredWorkers = shift.max_workers || 0;
@@ -73,7 +72,7 @@ export async function assignUsersToShifts(
 
       // Create a new assignment entry
       const assignmentId = `${shiftId}_${app.worker_id}`;
-      assignmentsUpdates[`assignments/${assignmentId}`] = {
+      applicationStatusUpdates[`assignments/${assignmentId}`] = {
         shift_id: shiftId,
         user_id: app.worker_id,
         assigned_at: new Date().toISOString(),
@@ -82,11 +81,7 @@ export async function assignUsersToShifts(
   }
 
   // Batch update Firebase
-  const updates = {
-    ...applicationStatusUpdates,
-    ...assignmentsUpdates,
-  };
-  await update(ref(databaseRef), updates);
+  await update(ref(databaseRef), applicationStatusUpdates);
 
   console.log('[assignUsersToShifts] Completed assignments:', pendingAssignments);
 

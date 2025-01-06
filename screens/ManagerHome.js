@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
 import { getDatabase, ref, get } from 'firebase/database';
-import DateTimePicker from '@react-native-community/datetimepicker'; // Import du sélecteur de date
+import DateTimePicker from '@react-native-community/datetimepicker'; // Sélecteur de date
 import { handleFileUpload } from '../scripts/updateProductivity';
-import { assignUsersToShifts } from '../scripts/assignmentLogic';
+import { assignUsersToShifts } from '../scripts/assignmentLogic'; // Logique d'assignation
 
 export default function ManagerHome({ navigation }) {
   const [pendingCount, setPendingCount] = useState(0);
@@ -14,7 +14,6 @@ export default function ManagerHome({ navigation }) {
   const database = getDatabase();
 
   useEffect(() => {
-    // Fonction pour récupérer les utilisateurs en attente
     const fetchPendingUsers = async () => {
       try {
         const usersRef = ref(database, 'users');
@@ -47,7 +46,6 @@ export default function ManagerHome({ navigation }) {
 
     setAssignMessage('Assigning workers to shifts...');
     try {
-      // Récupérer les données depuis Firebase
       const shiftsSnapshot = await get(ref(database, 'shifts'));
       const usersSnapshot = await get(ref(database, 'users'));
       const workersSnapshot = await get(ref(database, 'workers'));
@@ -64,13 +62,13 @@ export default function ManagerHome({ navigation }) {
         const workers = workersSnapshot.val();
         const applications = applicationsSnapshot.val();
 
-        // Appeler la logique d'assignation
-        const { pendingAssignments, workerUpdates } = await assignUsersToShifts(
+        const { pendingAssignments } = await assignUsersToShifts(
           shifts,
           users,
           workers,
           applications,
-          selectedWeek
+          selectedWeek,
+          database
         );
 
         setAssignMessage(
@@ -147,7 +145,6 @@ export default function ManagerHome({ navigation }) {
         {/* Assign Shifts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shift Assignments</Text>
-          {/* Sélecteur de semaine */}
           <TouchableOpacity
             style={styles.datePickerButton}
             onPress={() => setShowDatePicker(true)}
@@ -166,7 +163,6 @@ export default function ManagerHome({ navigation }) {
               onChange={handleDateChange}
             />
           )}
-          {/* Bouton Assign Workers */}
           <TouchableOpacity style={styles.assignButton} onPress={handleAssignShifts}>
             <Text style={styles.assignButtonText}>Assign Workers to Shifts</Text>
           </TouchableOpacity>
