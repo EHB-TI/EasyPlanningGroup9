@@ -121,7 +121,7 @@ async function findAndDeleteRelatedEntries(nodePath, targetObject, shiftIdsToDel
  * Cloud Function to manage weeks and shifts dynamically based on date range.
  */
 exports.manageWeeksAndShifts = functions.pubsub
-  .schedule("59 23 * * 0") // Every Sunday at 23:59
+  .schedule("1 0 * * 1") // Every monday at 00:01
   .timeZone(TIMEZONE)
   .onRun(async () => {
     try {
