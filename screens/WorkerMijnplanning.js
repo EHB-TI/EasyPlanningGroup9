@@ -329,7 +329,7 @@ const userId = auth.currentUser ? auth.currentUser.uid : null;
       {/* TOEKOMSTIGE GEACCEPTEERDE SHIFTS */}
       <View style={styles.listSection}>
         <Text style={styles.sectionTitle}>
-          Geaccepteerde Shifts (Toekomst)
+          Geaccepteerde Shifts
         </Text>
         {futureAcceptedShifts.length === 0 ? (
           <Text style={styles.noAccepted}>Geen geaccepteerde shifts</Text>

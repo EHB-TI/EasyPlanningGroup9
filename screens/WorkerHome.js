@@ -17,7 +17,7 @@ export default function WorkerHome({ navigation }) {
   const [weeks, setWeeks] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [applications, setApplications] = useState([]);
-  const [assignments, setAssignments] = useState([]); // NEW: so we can read `fixed_day`
+  const [assignments, setAssignments] = useState([]); // Voor `fixed_day`
   const [refreshing, setRefreshing] = useState(false);
 
   const auth = getAuth();
@@ -36,10 +36,10 @@ export default function WorkerHome({ navigation }) {
       if (snapshot.exists()) {
         setUser(snapshot.val());
       } else {
-        console.log('User does not exist');
+        console.log('User bestaat niet');
       }
     } catch (error) {
-      console.error('Error fetching user data:', error);
+      console.error('Fout bij het ophalen van gebruikersgegevens:', error);
     }
   };
 
@@ -91,7 +91,7 @@ export default function WorkerHome({ navigation }) {
     });
   };
 
-  // 5) Fetch assignments (NEW)
+  // 5) Fetch assignments
   const fetchAssignments = () => {
     const assignmentsRef = ref(database, 'assignments');
     onValue(assignmentsRef, (snapshot) => {
@@ -115,7 +115,7 @@ export default function WorkerHome({ navigation }) {
     fetchWeeks();
     fetchShifts();
     fetchApplications();
-    fetchAssignments(); // NEW
+    fetchAssignments();
   }, [currentUser]);
 
   // Pull to refresh
@@ -127,7 +127,7 @@ export default function WorkerHome({ navigation }) {
     fetchWeeks();
     fetchShifts();
     fetchApplications();
-    fetchAssignments(); // NEW
+    fetchAssignments();
     setTimeout(() => setRefreshing(false), 1000);
   }, [currentUser]);
 
@@ -178,10 +178,10 @@ export default function WorkerHome({ navigation }) {
               };
 
               await set(ref(database, `applications/${applicationId}`), applicationData);
-              Alert.alert('Success', 'Shift is nu in afwachting van goedkeuring.');
+              Alert.alert('Succes', 'Shift is nu in afwachting van goedkeuring.');
             } catch (error) {
-              console.error('Error reserving shift:', error);
-              Alert.alert('Error', 'Er ging iets mis bij het reserveren van de shift.');
+              console.error('Fout bij het reserveren van de shift:', error);
+              Alert.alert('Fout', 'Er ging iets mis bij het reserveren van de shift.');
             }
           },
         },
@@ -205,10 +205,10 @@ export default function WorkerHome({ navigation }) {
           onPress: async () => {
             try {
               await remove(ref(database, `applications/${applicationId}`));
-              Alert.alert('Success', 'De aanvraag is geannuleerd.');
+              Alert.alert('Succes', 'De aanvraag is geannuleerd.');
             } catch (error) {
-              console.error('Error cancelling application:', error);
-              Alert.alert('Error', 'Er ging iets mis bij het annuleren van de aanvraag.');
+              console.error('Fout bij het annuleren van de aanvraag:', error);
+              Alert.alert('Fout', 'Er ging iets mis bij het annuleren van de aanvraag.');
             }
           },
         },
@@ -231,29 +231,62 @@ export default function WorkerHome({ navigation }) {
   };
 
   // C. getUserAssignmentForShift => see if there's an assignment for the current user with fixed_day info
-  //    This allows us to check assignment.fixed_day to display "Vaste Dag" if true.
   const getUserAssignmentForShift = (shiftId) => {
     return assignments.find(
       (a) => a.shift_id === shiftId && a.user_id === currentUser?.uid
     );
   };
 
-  // We only want to show shifts from "today" onward (filter out old/past shifts).
+  // Huidige dag, genormaliseerd
   const now = new Date();
-  now.setHours(0, 0, 0, 0); // Compare at midnight
+  now.setHours(0, 0, 0, 0);
 
-  // 1) Accepted Shifts => user is assigned, ignoring shift.status, but must be >= today
+  // ------------------------------------------------------------------
+  // Functie om de maandag van "over 2 weken" te berekenen
+  // ------------------------------------------------------------------
+  const getMondayOfNextNextWeek = () => {
+    // 1) Vind de maandag van deze week
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // dayOfWeek: Zondag=0, Maandag=1, Dinsdag=2, ... 
+    const dayOfWeek = today.getDay();
+
+    // Bepaal hoeveel dagen we moeten terug om bij deze week's maandag te komen
+    // (maandag=1 => difference = (1 - dayOfWeek) mod 7, maar handiger is (dayOfWeek + 6) % 7)
+    const difference = (dayOfWeek + 6) % 7;
+    const mondayThisWeek = new Date(today);
+    mondayThisWeek.setDate(today.getDate() - difference);
+    mondayThisWeek.setHours(0, 0, 0, 0);
+
+    // 2) Tel er 14 dagen bij op (volgende week + nog 1 week)
+    mondayThisWeek.setDate(mondayThisWeek.getDate() + 14);
+
+    return mondayThisWeek;
+  };
+
+  const mondayNextNextWeek = getMondayOfNextNextWeek();
+
+  console.log('Vandaag (nu):', now.toLocaleDateString('nl-NL'));
+  console.log('Eerste Beschikbare Shifts vanaf (maandag over 2 weken):', mondayNextNextWeek.toLocaleDateString('nl-NL'));
+
+  // ------------------------------------------------------------------
+  // FILTERS
+  // ------------------------------------------------------------------
+
+  // 1) Geaccepteerde Shifts => user is assigned, ignoring shift.status, but must be >= today
   const acceptedShifts = shifts
     .filter((shift) => {
       const shiftDate = new Date(shift.date);
-      return shiftDate >= now; // NEW: hide old shifts
+      shiftDate.setHours(0, 0, 0, 0);
+      return shiftDate >= now; // verberg oude shifts
     })
     .filter((shift) => isUserAssignedToShift(shift))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   const acceptedShiftsCount = acceptedShifts.length;
 
-  // 2) My pending “applied” apps => shift is active and date >= today
+  // 2) Mijn “applied” apps => shift is actief en date >= vandaag
   const myPendingApps = applications.filter((app) => {
     if (app.worker_id !== currentUser?.uid) return false;
     if (app.status !== 'applied') return false;
@@ -262,39 +295,54 @@ export default function WorkerHome({ navigation }) {
     if (!shiftForApp) return false;
 
     const shiftDate = new Date(shiftForApp.date);
-    if (shiftDate < now) return false; // Hide old
+    shiftDate.setHours(0, 0, 0, 0);
+    if (shiftDate < now) return false; // verberg oude shifts
     return shiftForApp.status === 'active';
   });
 
-  // 3) Canceled Shifts => shift.status === "closed", user had an application, not assigned, date >= today
+  // 3) Geannuleerde Shifts => shift.status === "closed", user had an application, niet assigned, date >= today
   const canceledShifts = shifts
     .filter((shift) => {
       const shiftDate = new Date(shift.date);
-      if (shiftDate < now) return false; // hide old
+      shiftDate.setHours(0, 0, 0, 0);
+      if (shiftDate < now) return false;
       return shift.status === 'closed';
     })
     .filter((shift) => {
       // user had an application
       const userApp = getUserApplicationForShift(shift.id);
       if (!userApp) return false;
-      // but is not assigned
+      // maar is niet assigned
       return !isUserAssignedToShift(shift);
     });
 
-  // 4) Available Shifts => shift is active, user not assigned, no pending app, date >= today
+  // 4) Beschikbare Shifts => shift is active, user not assigned, geen pending app, en vanaf maandag over 2 weken
   const availableShifts = shifts
     .filter((shift) => {
       const shiftDate = new Date(shift.date);
-      if (shiftDate < now) return false; // hide old
-      return shift.status === 'active';
-    })
-    .filter((shift) => !isUserAssignedToShift(shift))
-    .filter(
-      (shift) =>
-        !applications.some(
+      shiftDate.setHours(0, 0, 0, 0);
+
+      // Filter 1: shift moet tenminste op of na de maandag van over 2 weken liggen
+      if (shiftDate < mondayNextNextWeek) return false;
+
+      // Filter 2: shift moet 'active' zijn
+      if (shift.status !== 'active') return false;
+
+      // Filter 3: user niet assigned
+      if (isUserAssignedToShift(shift)) return false;
+
+      // Filter 4: user heeft nog geen aanvraag (application) lopen
+      if (
+        applications.some(
           (app) => app.shift_id === shift.id && app.worker_id === currentUser?.uid
         )
-    )
+      ) {
+        return false;
+      }
+
+      // Als al deze checks geslaagd zijn, is de shift "beschikbaar"
+      return true;
+    })
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   // ------------------------------------------------------------------
@@ -329,19 +377,17 @@ export default function WorkerHome({ navigation }) {
           ) : (
             acceptedShifts.map((shift) => {
               const userAssignment = getUserAssignmentForShift(shift.id);
-              const isFixedDay = userAssignment?.fixed_day === true; // NEW: check assignment.fixed_day
+              const isFixedDay = userAssignment?.fixed_day === true; // Check `fixed_day`
 
               return (
                 <View key={shift.id} style={styles.acceptedShift}>
                   <View>
                     {/* Display the day of the week and the date */}
                     <Text style={styles.acceptedShiftDay}>
-                      {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}
-                      , {new Date(shift.date).toLocaleDateString('nl-NL')}
+                      {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })},
+                      {' ' + new Date(shift.date).toLocaleDateString('nl-NL')}
                     </Text>
-                    {isFixedDay && (
-                      <Text style={styles.fixedDayLabel}>Vaste Dag</Text>
-                    )}
+                    {isFixedDay && <Text style={styles.fixedDayLabel}>Vaste Dag</Text>}
                   </View>
                   {/* Optionally show shift.status */}
                   <Text style={styles.acceptedShiftStatus}>
@@ -380,7 +426,7 @@ export default function WorkerHome({ navigation }) {
           )}
         </View>
 
-        {/* BESCHIKBARE SHIFTS => user not assigned, no application, shift is active, date >= today */}
+        {/* BESCHIKBARE SHIFTS => user not assigned, no application, shift is active, date >= maandag over 2 weken */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Beschikbare Shifts</Text>
           {availableShifts.length === 0 ? (
@@ -390,8 +436,8 @@ export default function WorkerHome({ navigation }) {
               <View key={shift.id} style={styles.freeShift}>
                 <View>
                   <Text style={styles.freeShiftDay}>
-                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}
-                    , {new Date(shift.date).toLocaleDateString('nl-NL')}
+                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })},
+                    {' ' + new Date(shift.date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -415,8 +461,8 @@ export default function WorkerHome({ navigation }) {
               <View key={shift.id} style={styles.canceledShift}>
                 <View>
                   <Text style={styles.canceledShiftDay}>
-                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })}
-                    , {new Date(shift.date).toLocaleDateString('nl-NL')}
+                    {new Date(shift.date).toLocaleDateString('nl-NL', { weekday: 'long' })},
+                    {' ' + new Date(shift.date).toLocaleDateString('nl-NL')}
                   </Text>
                 </View>
                 <Text style={styles.canceledShiftStatus}>Niet geaccepteerd</Text>
@@ -512,7 +558,7 @@ const styles = StyleSheet.create({
   },
   fixedDayLabel: {
     fontSize: 12,
-    color: '#FF9800', // Orange for "Vaste Dag" label
+    color: '#FF9800', // Oranje voor "Vaste Dag"
     marginTop: 4,
     fontStyle: 'italic',
   },
@@ -598,7 +644,7 @@ const styles = StyleSheet.create({
   canceledShiftStatus: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#F44336', // red
+    color: '#F44336', // Rood
   },
   noCanceled: {
     fontSize: 14,
@@ -606,3 +652,16 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
 });
+
+// ------------------------------------------------------------------
+// Eventuele extra helper-functies
+// ------------------------------------------------------------------
+
+// wordt niet gebruikt extra
+const todayToString = (date) => {
+  return date.toLocaleDateString('nl-NL', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+};
