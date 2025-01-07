@@ -98,18 +98,33 @@ const AdminPanelScreen = ({ route, navigation }) => {
       const db = getDatabase();
       const dbRef = ref(db);
   
+      // Fetch users
       const usersSnapshot = await get(child(dbRef, "users"));
       if (usersSnapshot.exists()) {
         const usersData = usersSnapshot.val();
   
+        // Fetch workers
+        const workersSnapshot = await get(child(dbRef, "workers"));
+        const workersData = workersSnapshot.exists() ? workersSnapshot.val() : {};
+  
         let filteredUsers = [];
   
-        // Filter users based on the filter parameter
+        // Filter users and attach worker details if applicable
         Object.entries(usersData).forEach(([id, user]) => {
           if (filter === "pending" && user.status === "pending") {
             filteredUsers.push({ id, ...user });
           } else if (filter === "approved" && user.status === "approved") {
-            filteredUsers.push({ id, ...user });
+            // Attach worker details if the user is a worker
+            const workerDetails = Object.values(workersData).find(
+              (worker) => worker.user_id === id
+            );
+  
+            // Convert fixed_days to array if it's an object
+            if (workerDetails && typeof workerDetails.fixed_days === "object") {
+              workerDetails.fixed_days = Object.values(workerDetails.fixed_days);
+            }
+  
+            filteredUsers.push({ id, ...user, ...workerDetails });
           }
         });
   
@@ -124,6 +139,8 @@ const AdminPanelScreen = ({ route, navigation }) => {
       setLoading(false);
     }
   };
+  
+  
   
   
   
@@ -258,16 +275,12 @@ const AdminPanelScreen = ({ route, navigation }) => {
   const handleEdit = (user) => {
     setEditingUserId(user.id);
     setEditFields({
-      first_name: user.first_name || "",
-      last_name: user.last_name || "",
-      phone: user.phone || "",
-      role: user.role || "",
-      sap_number: user.sap_number || "",
       contract_type: user.contract_type || "",
       fixed_days: Array.isArray(user.fixed_days) ? user.fixed_days.join(", ") : "",
       max_hours_week: user.max_hours_week ? user.max_hours_week.toString() : "",
     });
   };
+  
 
   // ----------------------------------------------------------------
   // SAVE EDIT
@@ -275,41 +288,32 @@ const AdminPanelScreen = ({ route, navigation }) => {
   const handleSaveEdit = async (user) => {
     try {
       const db = getDatabase();
-      const userRef = ref(db, `users/${user.id}`);
-
-      // Update user fields
-      const updates = {
-        first_name: editFields.first_name,
-        last_name: editFields.last_name,
-        phone: editFields.phone,
-        role: editFields.role,
-        sap_number: editFields.sap_number,
-      };
-
-      // If newly set to worker, or continuing as worker, update worker node
-      if (editFields.role === "worker" && user.worker_id) {
+  
+      // Update worker fields in the 'workers' node
+      if (user.worker_id) {
         const workersRef = ref(db, `workers/${user.worker_id}`);
         const workerUpdates = {
-          contract_type: editFields.contract_type,
+          contract_type: editFields.contract_type || user.contract_type,
           fixed_days: editFields.fixed_days
-            .toLowerCase()
+            ?.toLowerCase()
             .split(",")
-            .map((day) => day.trim()),
-          max_hours_week: parseInt(editFields.max_hours_week, 10),
+            .map((day) => day.trim()) || user.fixed_days,
+          max_hours_week: parseInt(editFields.max_hours_week, 10) || user.max_hours_week,
         };
+  
         await update(workersRef, workerUpdates);
       }
-
-      await update(userRef, updates);
-
-      Alert.alert("Success", "User information has been updated.");
+  
+      Alert.alert("Success", "Worker information has been updated.");
       setEditingUserId(null);
-      fetchUsers();
+      fetchUsers(filter); // Refresh the users list after saving
     } catch (error) {
-      console.error("Error updating user:", error);
-      Alert.alert("Error", "Failed to update user information.");
+      console.error("Error updating worker:", error);
+      Alert.alert("Error", "Failed to update worker information.");
     }
   };
+  
+  
 
   // ----------------------------------------------------------------
   // CANCEL EDIT
@@ -322,16 +326,20 @@ const AdminPanelScreen = ({ route, navigation }) => {
   // RENDER HELPER: USER DETAIL
   // ----------------------------------------------------------------
   const renderUserDetail = (label, value) => {
-    // Only render if value is not empty, undefined, "N/A", etc.
     if (value !== undefined && value !== null && value !== "" && value !== "N/A") {
+      // Convert arrays to a comma-separated string
+      const displayValue = Array.isArray(value) ? value.join(", ") : value;
+  
       return (
         <Text style={styles.userDetail}>
-          {label}: {value}
+          {label}: {displayValue}
         </Text>
       );
     }
     return null;
   };
+  
+  
 
   // ----------------------------------------------------------------
   // RENDER ITEM
@@ -344,14 +352,23 @@ const AdminPanelScreen = ({ route, navigation }) => {
         <Text style={styles.userName}>
           {item.first_name} {item.last_name}
         </Text>
+  
         {renderUserDetail("Email", item.email)}
         {renderUserDetail("Role", item.role)}
         {renderUserDetail("SAP Number", item.sap_number)}
   
-        {/* Show input fields only for pending users */}
-        {filter === "pending" && (
+        {/* Show worker details */}
+        {item.role === "worker" && (
           <>
-            {/* Role Picker */}
+            {renderUserDetail("Contract Type", item.contract_type)}
+            {renderUserDetail("Fixed Days", item.fixed_days)}
+            {renderUserDetail("Max Hours/Week", item.max_hours_week)}
+          </>
+        )}
+  
+        {/* Input fields for pending users */}
+        {filter === "pending" ? (
+          <>
             <Picker
               selectedValue={userInput.role || ""}
               style={styles.picker}
@@ -371,10 +388,8 @@ const AdminPanelScreen = ({ route, navigation }) => {
               ))}
             </Picker>
   
-            {/* If role=worker, show additional fields */}
             {userInput.role === "worker" && (
               <>
-                {/* Contract Type Picker */}
                 <Picker
                   selectedValue={userInput.contractType || ""}
                   style={styles.picker}
@@ -394,7 +409,6 @@ const AdminPanelScreen = ({ route, navigation }) => {
                   ))}
                 </Picker>
   
-                {/* Fixed Days Input */}
                 <TextInput
                   style={styles.textInput}
                   placeholder="Enter Fixed Days (e.g., monday,tuesday)"
@@ -410,7 +424,6 @@ const AdminPanelScreen = ({ route, navigation }) => {
                   }
                 />
   
-                {/* Max Hours/Week */}
                 <TextInput
                   style={styles.textInput}
                   placeholder="Enter Max Hours per Week"
@@ -429,7 +442,6 @@ const AdminPanelScreen = ({ route, navigation }) => {
               </>
             )}
   
-            {/* SAP Number */}
             <TextInput
               style={styles.textInput}
               placeholder="Enter SAP Number"
@@ -445,7 +457,6 @@ const AdminPanelScreen = ({ route, navigation }) => {
               }
             />
   
-            {/* Approve Button */}
             <TouchableOpacity
               style={styles.approveButton}
               onPress={() => handleApproveUser(item)}
@@ -453,10 +464,84 @@ const AdminPanelScreen = ({ route, navigation }) => {
               <Text style={styles.buttonText}>Approve</Text>
             </TouchableOpacity>
           </>
-        )}
+        ) : filter === "approved" ? (
+          <>
+            {editingUserId === item.id ? (
+              <>
+                {/* Editable fields for approved users */}
+                <Picker
+                  selectedValue={editFields.contract_type || item.contract_type || ""}
+                  style={styles.picker}
+                  onValueChange={(value) =>
+                    setEditFields((prev) => ({
+                      ...prev,
+                      contract_type: value,
+                    }))
+                  }
+                >
+                  <Picker.Item label="Select Contract Type" value="" />
+                  {contractOptions.map((ct) => (
+                    <Picker.Item key={ct} label={ct} value={ct} />
+                  ))}
+                </Picker>
+  
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter Fixed Days (e.g., monday,tuesday)"
+                  value={editFields.fixed_days || (Array.isArray(item.fixed_days) ? item.fixed_days.join(", ") : "")}
+                  onChangeText={(text) =>
+                    setEditFields((prev) => ({
+                      ...prev,
+                      fixed_days: text,
+                    }))
+                  }
+                />
+  
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter Max Hours per Week"
+                  keyboardType="numeric"
+                  value={editFields.max_hours_week || item.max_hours_week?.toString() || ""}
+                  onChangeText={(text) =>
+                    setEditFields((prev) => ({
+                      ...prev,
+                      max_hours_week: text,
+                    }))
+                  }
+                />
+  
+                <View style={styles.editButtonsContainer}>
+                  <TouchableOpacity
+                    style={styles.saveButton}
+                    onPress={() => handleSaveEdit(item)}
+                  >
+                    <Text style={styles.buttonText}>Save</Text>
+                  </TouchableOpacity>
+  
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={handleCancelEdit}
+                  >
+                    <Text style={styles.buttonText}>Cancel</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => handleEdit(item)}
+              >
+                <Ionicons name="pencil" size={16} color="#fff" />
+                <Text style={styles.editButtonText}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        ) : null}
       </View>
     );
   };
+  
+  
   
   
 
@@ -515,6 +600,7 @@ const AdminPanelScreen = ({ route, navigation }) => {
   data={users}
   keyExtractor={(item) => item.id}
   renderItem={renderItem}
+  edit
   refreshControl={
     <RefreshControl
       refreshing={refreshing}

@@ -183,12 +183,7 @@ export default function ManagerHome({ navigation }) {
         </View>
 
         {/* File Upload Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Productivity Update</Text>
-          <TouchableOpacity style={styles.fileUploadButton} onPress={handleFileUpload}>
-            <Text style={styles.fileUploadButtonText}>Upload Excel File</Text>
-          </TouchableOpacity>
-        </View>
+       
 
         {/* Shift Assignments */}
         <View style={styles.section}>
