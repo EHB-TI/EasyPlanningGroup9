@@ -1,4 +1,4 @@
-import { update, ref } from 'firebase/database';
+import { update, ref, get } from 'firebase/database'; // Importer `get` pour lire les données existantes.
 import { v4 as uuidv4 } from 'uuid'; // Pour générer un ID unique.
 
 /**
@@ -74,6 +74,16 @@ export async function assignUsersToShifts(
 
     pendingAssignments[shiftId] = assignedUsers.map(([appId]) => appId);
 
+    // Charger les assigned_workers actuels
+    const shiftRef = ref(databaseRef, `shifts/${shiftId}/assigned_workers`);
+    const currentAssignedWorkersSnapshot = await get(shiftRef);
+    const currentAssignedWorkers = currentAssignedWorkersSnapshot.exists()
+      ? currentAssignedWorkersSnapshot.val()
+      : [];
+
+    // Vérifier les doublons et ajouter uniquement les nouveaux
+    const updatedAssignedWorkers = [...new Set([...currentAssignedWorkers, ...assignedUsers.map(([_, app]) => app.worker_id)])];
+
     assignedUsers.forEach(([appId, app]) => {
       // Update application status to "assigned"
       applicationStatusUpdates[`applications/${appId}/status`] = 'assigned';
@@ -88,6 +98,10 @@ export async function assignUsersToShifts(
         assigned_at: new Date().toISOString(),
       };
     });
+
+    // Mettre à jour les assigned_workers dans Firebase
+    applicationStatusUpdates[`shifts/${shiftId}/assigned_workers`] = updatedAssignedWorkers;
+    applicationStatusUpdates[`shifts/${shiftId}/updated_at`] = new Date().toISOString();
   }
 
   // Batch update Firebase
