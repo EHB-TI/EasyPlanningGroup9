@@ -379,8 +379,7 @@ const AdminPanelScreen = ({ route, navigation }) => {
         </Text>
   
         {renderUserDetail("Email", item.email)}
-        {renderUserDetail("Role", item.role)}
-        {renderUserDetail("SAP Number", item.sap_number)}
+        
   
         {/* Show worker details */}
         {item.role === "worker" && (
