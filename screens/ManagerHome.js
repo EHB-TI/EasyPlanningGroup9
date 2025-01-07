@@ -1,56 +1,76 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
+import { getAuth } from 'firebase/auth';
 import { getDatabase, ref, get } from 'firebase/database';
-import DateTimePicker from '@react-native-community/datetimepicker'; // Sélecteur de date
-import { handleFileUpload } from '../scripts/updateProductivity';
-import { assignUsersToShifts } from '../scripts/assignmentLogic'; // Logique d'assignation
-
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { assignUsersToShifts } from '../scripts/assignmentLogic';
+ 
 export default function ManagerHome({ navigation }) {
   const [pendingCount, setPendingCount] = useState(0);
+  const [approvedCount, setApprovedCount] = useState(0);
   const [assignMessage, setAssignMessage] = useState('');
-  const [selectedWeek, setSelectedWeek] = useState(null); // Stocke la semaine sélectionnée
-  const [showDatePicker, setShowDatePicker] = useState(false); // Contrôle l'affichage du sélecteur de date
+  const [selectedWeek, setSelectedWeek] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [manager, setManager] = useState({ first_name: '', last_name: '' });
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
   const database = getDatabase();
-
+ 
   useEffect(() => {
-    const fetchPendingUsers = async () => {
-      try {
-        const usersRef = ref(database, 'users');
-        const snapshot = await get(usersRef);
-
-        if (snapshot.exists()) {
-          const usersData = snapshot.val();
-          const pendingUsers = Object.values(usersData).filter(user => user.status === 'pending');
-          setPendingCount(pendingUsers.length);
-        } else {
-          setPendingCount(0);
-        }
-      } catch (error) {
-        console.error('Error fetching pending users:', error);
+    if (currentUser) {
+      fetchManager(currentUser.uid);
+    }
+    fetchUserCounts();
+  }, [currentUser]);
+ 
+  const fetchManager = async (userId) => {
+    try {
+      const userRef = ref(database, `users/${userId}`);
+      const snapshot = await get(userRef);
+      if (snapshot.exists()) {
+        setManager(snapshot.val());
+      } else {
+        console.log('Manager not found.');
       }
-    };
-
-    fetchPendingUsers();
-  }, []);
-
-  const handleNavigate = (screen) => {
-    navigation.navigate(screen);
+    } catch (error) {
+      console.error('Error fetching manager data:', error);
+    }
   };
-
+ 
+  const fetchUserCounts = async () => {
+    try {
+      const usersRef = ref(database, 'users');
+      const snapshot = await get(usersRef);
+ 
+      if (snapshot.exists()) {
+        const usersData = snapshot.val();
+        const pendingUsers = Object.values(usersData).filter(user => user.status === 'pending');
+        const approvedUsers = Object.values(usersData).filter(user => user.status === 'approved');
+        setPendingCount(pendingUsers.length);
+        setApprovedCount(approvedUsers.length);
+      } else {
+        setPendingCount(0);
+        setApprovedCount(0);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+ 
   const handleAssignShifts = async () => {
     if (!selectedWeek) {
       Alert.alert('Select a Week', 'Please select a week for assigning shifts.');
       return;
     }
-
+ 
     setAssignMessage('Assigning workers to shifts...');
     try {
       const shiftsSnapshot = await get(ref(database, 'shifts'));
       const usersSnapshot = await get(ref(database, 'users'));
       const workersSnapshot = await get(ref(database, 'workers'));
       const applicationsSnapshot = await get(ref(database, 'applications'));
-
+ 
       if (
         shiftsSnapshot.exists() &&
         usersSnapshot.exists() &&
@@ -61,7 +81,7 @@ export default function ManagerHome({ navigation }) {
         const users = usersSnapshot.val();
         const workers = workersSnapshot.val();
         const applications = applicationsSnapshot.val();
-
+ 
         const { pendingAssignments } = await assignUsersToShifts(
           shifts,
           users,
@@ -70,7 +90,7 @@ export default function ManagerHome({ navigation }) {
           selectedWeek,
           database
         );
-
+ 
         setAssignMessage(
           `Successfully assigned workers to ${Object.keys(pendingAssignments).length} shifts.`
         );
@@ -82,7 +102,7 @@ export default function ManagerHome({ navigation }) {
       setAssignMessage('Failed to assign workers. Check the logs for details.');
     }
   };
-
+ 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(false);
     if (selectedDate) {
@@ -91,17 +111,21 @@ export default function ManagerHome({ navigation }) {
       setSelectedWeek(startOfWeek);
     }
   };
-  
-
+ 
   return (
     <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <Text style={styles.header}>Welcome, Manager</Text>
-        <Text style={styles.subHeader}>Your Dashboard</Text>
-      </View>
-
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Overview Cards */}
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <Text style={styles.header}>
+            Welcome
+          </Text>
+          <Text style={styles.header}>
+            Manager <Text style={styles.managerName}>{`${manager.first_name} ${manager.last_name}`}</Text>
+          </Text>
+        </View>
+       
+        {/* Overview Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.cardRow}>
@@ -115,63 +139,60 @@ export default function ManagerHome({ navigation }) {
               <Text style={styles.cardTitle}>Pending Accounts</Text>
               <Text style={styles.cardNumber}>{pendingCount}</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.cardRow}>
+ 
             <TouchableOpacity
-              style={styles.actionCard}
+              style={styles.card}
               onPress={() => navigation.navigate('UserPanel', { filter: 'approved' })}
             >
-              <Text style={styles.actionCardText}>Approved Accounts</Text>
+              <View style={styles.cardIcon}>
+                <Entypo name="check" size={32} color="#4CAF50" />
+              </View>
+              <Text style={styles.cardTitle}>Approved Accounts</Text>
+              <Text style={styles.cardNumber}>{approvedCount}</Text>
             </TouchableOpacity>
-
+          </View>
+ 
+          <View style={styles.cardRow}>
             <TouchableOpacity
-  style={styles.actionCard}
-  onPress={() => {
-    const today = new Date();
-    const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 1)); // Set to Monday of the current week
-    const weekId = `week_${startOfWeek.toISOString().split('T')[0]}`;
-    const selectedDate = startOfWeek.toISOString().split('T')[0];
-
-    navigation.navigate('AddWorkersNeededScreen', {
-      weekId,
-      selectedDate,
-    });
-  }}
->
-  <Text style={styles.actionCardText}>Add Workers</Text>
-</TouchableOpacity>
-
-            </View>
-            <View style={styles.cardRow}>
-
-
-            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('ManagerCalendar')}>
-              <Text style={styles.actionCardText}>View Calendar</Text>
+              style={styles.card}
+              onPress={() => {
+                const today = new Date();
+                const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 1));
+                const weekId = `week_${startOfWeek.toISOString().split('T')[0]}`;
+                const selectedDate = startOfWeek.toISOString().split('T')[0];
+ 
+                navigation.navigate('AddWorkersNeededScreen', {
+                  weekId,
+                  selectedDate,
+                });
+              }}
+            >
+              <View style={styles.cardIcon}>
+                <Entypo name="add-user" size={32} color="#4CAF50" />
+              </View>
+              <Text style={styles.cardTitle}>Add Workers</Text>
+            </TouchableOpacity>
+ 
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => navigation.navigate('ManagerCalendar')}
+            >
+              <View style={styles.cardIcon}>
+                <Entypo name="calendar" size={32} color="#4CAF50" />
+              </View>
+              <Text style={styles.cardTitle}>View Calendar</Text>
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* File Upload Button */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Productivity Update</Text>
-          <TouchableOpacity style={styles.fileUploadButton} onPress={handleFileUpload}>
-            <Text style={styles.fileUploadButtonText}>Upload Excel File</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Assign Shifts Section */}
+ 
+        {/* Shift Assignments */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shift Assignments</Text>
           <TouchableOpacity
-            style={styles.datePickerButton}
+            style={styles.gradientButton}
             onPress={() => setShowDatePicker(true)}
           >
-            <Text style={styles.datePickerButtonText}>
+            <Text style={styles.gradientButtonText}>
               {selectedWeek
                 ? `Week Starting: ${selectedWeek.toDateString()}`
                 : 'Select a Week'}
@@ -185,8 +206,8 @@ export default function ManagerHome({ navigation }) {
               onChange={handleDateChange}
             />
           )}
-          <TouchableOpacity style={styles.assignButton} onPress={handleAssignShifts}>
-            <Text style={styles.assignButtonText}>Assign Workers to Shifts</Text>
+          <TouchableOpacity style={[styles.gradientButton, styles.assignButton]} onPress={handleAssignShifts}>
+            <Text style={styles.gradientButtonText}>Assign Workers to Shifts</Text>
           </TouchableOpacity>
           {assignMessage ? <Text style={styles.assignMessage}>{assignMessage}</Text> : null}
         </View>
@@ -194,27 +215,25 @@ export default function ManagerHome({ navigation }) {
     </View>
   );
 }
-
+ 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F5FAFB',
   },
   headerContainer: {
-    padding: 30,
-    backgroundColor: '#4CAF50',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    padding: 5,
+    alignItems: 'left',
+    justifyContent: 'center',
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: '#4CAF50',
+    paddingTop: 10
   },
-  subHeader: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginTop: 5,
+  managerName: {
+    fontWeight: 'normal',
   },
   content: {
     padding: 16,
@@ -227,10 +246,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 12,
+    paddingTop: 5
   },
   cardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: 12,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -259,74 +280,29 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     marginTop: 8,
   },
-  actionCard: {
+  gradientButton: {
     backgroundColor: '#4CAF50',
-    borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    width: '48%',
+    borderRadius: 25,
     alignItems: 'center',
     marginBottom: 12,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 2,
-    justifyContent: 'center',
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#4CAF50',
   },
-  actionCardText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  fileUploadButton: {
-    backgroundColor: '#007BFF',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 2,
-    justifyContent: 'center',
-  },
-  fileUploadButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  datePickerButton: {
-    backgroundColor: '#007BFF',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  datePickerButtonText: {
+  gradientButtonText: {
     fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
   assignButton: {
     backgroundColor: '#FF5722',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 2,
-    justifyContent: 'center',
-  },
-  assignButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    borderColor: '#FF5722'
   },
   assignMessage: {
     marginTop: 12,
