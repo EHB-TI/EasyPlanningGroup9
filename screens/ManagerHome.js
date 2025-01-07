@@ -4,7 +4,6 @@ import { Entypo } from '@expo/vector-icons';
 import { getAuth } from 'firebase/auth';
 import { getDatabase, ref, get } from 'firebase/database';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { handleFileUpload } from '../scripts/updateProductivity';
 import { assignUsersToShifts } from '../scripts/assignmentLogic';
  
 export default function ManagerHome({ navigation }) {
@@ -185,15 +184,7 @@ export default function ManagerHome({ navigation }) {
             </TouchableOpacity>
           </View>
         </View>
- 
-        {/* File Upload Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Productivity Update</Text>
-          <TouchableOpacity style={styles.gradientButton} onPress={handleFileUpload}>
-            <Text style={styles.gradientButtonText}>Upload Excel File</Text>
-          </TouchableOpacity>
-        </View>
- 
+
         {/* Shift Assignments */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shift Assignments</Text>
