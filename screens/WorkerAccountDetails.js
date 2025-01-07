@@ -28,11 +28,11 @@ export default function AccountDetails({ navigation }) {
     last_name: "",
     phone: "",
     email: "",
-    contract: "", // From 'users' node
+    contract: "",
   });
-  const [fixDays, setFixDays] = useState([]);        // Renamed from 'fixedDays'
-  const [contractType, setContractType] = useState(""); 
-  const [maxHoursWeek, setMaxHoursWeek] = useState(0); 
+  const [fixDays, setFixDays] = useState([]);
+  const [contractType, setContractType] = useState("");
+  const [maxHoursWeek, setMaxHoursWeek] = useState(0);
   const [isEditing, setIsEditing] = useState(false);
 
   const auth = getAuth();
@@ -47,13 +47,11 @@ export default function AccountDetails({ navigation }) {
     }
   }, [currentUser]);
 
-  // Helper function to capitalize the first letter
   const capitalizeFirstLetter = (string) => {
     if (!string) return "";
     return string.charAt(0).toUpperCase() + string.slice(1);
   };
 
-  // Function to fetch user data from 'users' node
   const fetchUser = async (userId) => {
     try {
       const userRef = ref(database, `users/${userId}`);
@@ -63,19 +61,17 @@ export default function AccountDetails({ navigation }) {
         setUser({
           first_name: userData.first_name || "",
           last_name: userData.last_name || "",
-          phone: userData.phone || "Niet gespecificeerd",
-          email: userData.email || "Niet gespecificeerd",
-          contract: userData.contract || "Niet gespecificeerd",
+          phone: userData.phone || "",
+          email: userData.email || "",
+          contract: userData.contract || "",
         });
       } else {
-        console.log("Gebruiker niet gevonden in de database.");
         Alert.alert(
           "Gebruiker Niet Gevonden",
           "Er is geen gebruiker gevonden met uw accountgegevens."
         );
       }
     } catch (error) {
-      console.error("Fout bij het ophalen van gebruikersgegevens:", error);
       Alert.alert(
         "Fout",
         "Er is een fout opgetreden bij het ophalen van uw gegevens."
@@ -83,68 +79,42 @@ export default function AccountDetails({ navigation }) {
     }
   };
 
-  // Function to fetch worker data including fix_days, contract_type, and max_hours_week
-const fetchWorkerData = async (userId) => {
-  try {
-    const workersRef = ref(database, "workers");
-    const workerQuery = query(workersRef, orderByChild("user_id"), equalTo(userId));
-    const snapshot = await get(workerQuery);
+  const fetchWorkerData = async (userId) => {
+    try {
+      const workersRef = ref(database, "workers");
+      const workerQuery = query(workersRef, orderByChild("user_id"), equalTo(userId));
+      const snapshot = await get(workerQuery);
 
-    if (!snapshot.exists()) {
-      console.log("Geen worker gevonden met deze user_id.");
-      setFixDays([]);
-      setContractType("Niet gespecificeerd");
-      setMaxHoursWeek(0);
-      return;
+      if (snapshot.exists()) {
+        const workersData = snapshot.val();
+        const workerKey = Object.keys(workersData)[0];
+        const worker = workersData[workerKey];
+
+        const fixDaysData = worker.fixed_days;
+        const contractTypeData = worker.contract_type;
+        const maxHoursWeekData = worker.max_hours_week;
+
+        if (fixDaysData) {
+          const fixDaysArray = Object.values(fixDaysData).map((day) =>
+            capitalizeFirstLetter(day)
+          );
+          setFixDays(fixDaysArray);
+        }
+
+        setContractType(contractTypeData || "");
+        setMaxHoursWeek(maxHoursWeekData || 0);
+      } else {
+        setFixDays([]);
+        setContractType("");
+        setMaxHoursWeek(0);
+      }
+    } catch (error) {
+      Alert.alert(
+        "Fout",
+        "Er is een fout opgetreden bij het ophalen van uw worker gegevens."
+      );
     }
-
-    // The query found some worker(s)
-    const workersData = snapshot.val();
-    console.log("WorkersData:", workersData);  // Let's see the entire object
-
-    // Since user_id should be unique, just take the first worker key
-    const workerKeys = Object.keys(workersData);
-    if (workerKeys.length === 0) {
-      console.log("Worker keys array is empty.");
-      setFixDays([]);
-      setContractType("Niet gespecificeerd");
-      setMaxHoursWeek(0);
-      return;
-    }
-
-    // Now define `worker`
-    const workerKey = workerKeys[0];
-    const worker = workersData[workerKey];
-    console.log("Worker object:", worker); // see what fields exist
-
-    // E.g. worker.fixed_days might be an object or array
-    const fixDaysData = worker.fixed_days;  
-    const contractTypeData = worker.contract_type;
-    const maxHoursWeekData = worker.max_hours_week;
-
-    console.log("fixDaysData from DB:", fixDaysData); 
-    if (fixDaysData) {
-      // If fixDaysData is an object like {0: "monday", 1: "tuesday"}
-      const fixDaysArray = Object.values(fixDaysData).map((day) => capitalizeFirstLetter(day));
-      setFixDays(fixDaysArray);
-    } else {
-      setFixDays([]);
-    }
-
-    console.log("Final fixDays state:", fixDays);  // Might still be old state if logs run too soon
-
-    setContractType(contractTypeData || "Niet gespecificeerd");
-    setMaxHoursWeek(maxHoursWeekData || 0);
-
-  } catch (error) {
-    console.error("Fout bij het ophalen van worker data:", error);
-    Alert.alert(
-      "Fout",
-      "Er is een fout opgetreden bij het ophalen van uw worker gegevens."
-    );
-  }
-};
-
+  };
 
   const handleEdit = () => {
     if (isEditing) {
@@ -161,10 +131,8 @@ const fetchWorkerData = async (userId) => {
         phone: user.phone,
         email: user.email,
       });
-      console.log("Gebruikersgegevens succesvol bijgewerkt.");
       Alert.alert("Succes", "Uw gegevens zijn succesvol bijgewerkt.");
     } catch (error) {
-      console.error("Fout bij het bijwerken van gebruikersgegevens:", error);
       Alert.alert(
         "Fout",
         "Er is een fout opgetreden bij het bijwerken van uw gegevens."
@@ -177,11 +145,12 @@ const fetchWorkerData = async (userId) => {
   };
 
   const handleNavigateBack = () => {
-    navigation.navigate("WorkerHome");
+    navigation.goBack();
   };
 
-  // Handle case where first_name might be empty
-  const firstLetter = user.first_name ? user.first_name.charAt(0).toUpperCase() : "";
+  const firstLetter = user.first_name
+    ? user.first_name.charAt(0).toUpperCase()
+    : "";
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -207,7 +176,11 @@ const fetchWorkerData = async (userId) => {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Voornaam:</Text>
             <TextInput
-              style={[styles.input, !isEditing && styles.disabledInput]}
+              style={[
+                styles.input,
+                !isEditing && styles.editableInput,
+                isEditing && styles.disabledInput,
+              ]}
               value={user.first_name}
               editable={false}
             />
@@ -217,7 +190,11 @@ const fetchWorkerData = async (userId) => {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Achternaam:</Text>
             <TextInput
-              style={[styles.input, !isEditing && styles.disabledInput]}
+              style={[
+                styles.input,
+                !isEditing && styles.editableInput,
+                isEditing && styles.disabledInput,
+              ]}
               value={user.last_name}
               editable={false}
             />
@@ -227,7 +204,7 @@ const fetchWorkerData = async (userId) => {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>GSM:</Text>
             <TextInput
-              style={styles.input}
+              style={styles.input} // Always white background for GSM
               value={user.phone.toString()}
               editable={isEditing}
               keyboardType="phone-pad"
@@ -239,10 +216,11 @@ const fetchWorkerData = async (userId) => {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>E-mail:</Text>
             <TextInput
-              style={styles.input}
+              style={styles.input} // Always white background for Email
               value={user.email}
+              editable={isEditing}
               keyboardType="email-address"
-              editable={false}
+              onChangeText={(text) => handleChange("email", text)}
             />
           </View>
 
@@ -266,7 +244,11 @@ const fetchWorkerData = async (userId) => {
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Max Uren per Week:</Text>
             <TextInput
-              style={[styles.input, styles.disabledInput]}
+              style={[
+                styles.input,
+                !isEditing && styles.editableInput,
+                isEditing && styles.disabledInput,
+              ]}
               value={maxHoursWeek.toString()}
               editable={false}
             />
@@ -345,15 +327,18 @@ const styles = StyleSheet.create({
     color: "#555555",
   },
   input: {
-    backgroundColor: "#F6F6F6",
+    backgroundColor: "#f5f5f5",
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
     color: "#000000",
   },
+  editableInput: {
+    backgroundColor: "#f5f5f5",
+  },
   disabledInput: {
-    backgroundColor: "#E0E0E0",
-    color: "#A0A0A0",
+    backgroundColor: "#ababab",
+    color: "#868686",
   },
   button: {
     backgroundColor: "#4CAF50",
