@@ -20,6 +20,12 @@ export async function assignUsersToShifts(
   selectedDate,
   databaseRef
 ) {
+  console.log('[assignUsersToShifts] START');
+    console.log('[assignUsersToShifts] Shifts:', shifts);
+    console.log('[assignUsersToShifts] Users:', users);
+    console.log('[assignUsersToShifts] Workers:', workers);
+    console.log('[assignUsersToShifts] Applications:', applications);
+    console.log('[assignUsersToShifts] Selected Date:', selectedDate);
   console.log('[assignUsersToShifts] START - Assigning for week:', selectedDate);
 
   // Calculer le lundi de la semaine

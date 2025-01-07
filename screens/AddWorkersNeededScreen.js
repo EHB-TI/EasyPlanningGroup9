@@ -154,13 +154,32 @@ export default function AddWorkersNeededScreen({ route, navigation }) {
     });
   };
 
-  // Render shifts
   const renderShifts = () =>
     Object.keys(shifts).map((shiftId) => {
       const shift = shifts[shiftId];
-      const shiftDate = new Date(shift.date);
-      const dayName = shiftDate.toLocaleString("en-US", { weekday: "long" });
-
+      let shiftDate;
+      try {
+        shiftDate = new Date(shift.date);
+        if (isNaN(shiftDate.getTime())) {
+          throw new Error('Invalid Date');
+        }
+      } catch (error) {
+        console.log(`Invalid date for shift ${shiftId}: ${shift.date}`);
+        return (
+          <View key={shiftId} style={styles.shiftCard}>
+            <View style={styles.shiftInfo}>
+              <Text style={styles.shiftDate}>Invalid Date</Text>
+              <Text style={styles.dayName}>Unknown Day</Text>
+              <Text style={styles.shiftStatus}>
+                Status: {shift.status.charAt(0).toUpperCase() + shift.status.slice(1)}
+              </Text>
+            </View>
+          </View>
+        );
+      }
+  
+      const dayName = shiftDate.toLocaleString("nl-NL", { weekday: "long" });
+  
       return (
         <View key={shiftId} style={styles.shiftCard}>
           <View style={styles.shiftInfo}>
@@ -197,6 +216,7 @@ export default function AddWorkersNeededScreen({ route, navigation }) {
         </View>
       );
     });
+  
 
   if (loadingWeeks) {
     return (
