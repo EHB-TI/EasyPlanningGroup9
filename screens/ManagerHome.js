@@ -146,7 +146,8 @@ export default function ManagerHome({ navigation }) {
   <Text style={styles.actionCardText}>Add Workers</Text>
 </TouchableOpacity>
 
-
+            </View>
+            <View style={styles.cardRow}>
 
 
             <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('ManagerCalendar')}>
