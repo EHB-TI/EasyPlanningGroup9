@@ -107,6 +107,7 @@ export default function WorkerHome({ navigation }) {
     });
   };
 
+  
   // On mount
   useEffect(() => {
     if (currentUser) {
