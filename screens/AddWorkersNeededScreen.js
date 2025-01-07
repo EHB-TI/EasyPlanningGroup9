@@ -9,8 +9,9 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
-import { ref, onValue, update, get } from "firebase/database"; 
-import { realtimeDB } from "../firebaseConfig"; // Ensure this path is correct
+import { Ionicons } from "@expo/vector-icons"; // Pour la flèche de retour
+import { ref, onValue, update, get } from "firebase/database";
+import { realtimeDB } from "../firebaseConfig"; // Assure-toi que ce chemin est correct
 
 export default function AddWorkersNeededScreen({ route, navigation }) {
   const { weekId, selectedDate } = route.params || { weekId: null, selectedDate: null };
@@ -49,8 +50,6 @@ export default function AddWorkersNeededScreen({ route, navigation }) {
     });
   }, [weekId]);
 
-  
-  
   useEffect(() => {
     if (!weekId) {
       Alert.alert("Error", "Week ID is missing. Returning to the previous screen.");
@@ -58,8 +57,7 @@ export default function AddWorkersNeededScreen({ route, navigation }) {
       return;
     }
   }, [weekId]);
-  
-  
+
   useEffect(() => {
     if (currentWeekIndex === null || weeks.length === 0) return;
 
@@ -82,9 +80,6 @@ export default function AddWorkersNeededScreen({ route, navigation }) {
     });
   }, [weeks, currentWeekIndex]);
 
-
-  
-  
   // Determine if all relevant shifts have max_workers > 0
   const canMakePlanning = Object.values(shifts)
     .filter((shift) => shift.status !== "closed") // Exclude closed shifts
@@ -132,12 +127,8 @@ export default function AddWorkersNeededScreen({ route, navigation }) {
     const selectedWeek = weeks[currentWeekIndex];
 
     if (canMakePlanning) {
-      console.log("Make Planning button pressed");
-      // Navigate to PlanningScreen with selectedWeek
       navigation.navigate("CreatePlanningScreen", { selectedWeek });
     } else {
-      console.log("View Applications button pressed");
-      // Navigate to ApplicationsScreen with selectedWeek
       navigation.navigate("ApplicationsScreen", { selectedWeek });
     }
   };
@@ -229,6 +220,14 @@ export default function AddWorkersNeededScreen({ route, navigation }) {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      {/* Flèche de retour */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Ionicons name="arrow-back" size={24} color="#23C882" />
+      </TouchableOpacity>
+
       <Text style={styles.header}>Add Workers Needed</Text>
 
       {/* Week Navigation */}
@@ -301,12 +300,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     flexGrow: 1,
   },
+  backButton: {
+    position: "absolute",
+    top: 20,
+    left: 16,
+    zIndex: 10,
+    paddingTop: 15
+  },
   header: {
     fontSize: 24,
     fontWeight: "bold",
     color: "#23C882",
     textAlign: "center",
     marginBottom: 20,
+    paddingTop: 10
   },
   subHeader: {
     fontSize: 16,
