@@ -32,8 +32,9 @@ export default function WorkerInstellingen({ navigation }) {
           <Ionicons name="arrow-back" size={24} color={isDarkMode ? '#FFF' : '#333'} />
         </TouchableOpacity>
         <Text style={dynamicStyles.headerTitle}>Instellingen</Text>
-        <View style={{ width: 24 }} /> {/* Placeholder for symmetry */}
+        
       </View>
+      
 
       {/* Notifications */}
       <View style={dynamicStyles.settingRow}>
