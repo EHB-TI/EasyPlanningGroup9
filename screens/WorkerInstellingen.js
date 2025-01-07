@@ -103,3 +103,4 @@ const styles = (isDarkMode) =>
       color: isDarkMode ? '#FFFFFF' : '#333333',
     },
   });
+  
