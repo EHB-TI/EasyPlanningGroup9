@@ -281,7 +281,32 @@ const AdminPanelScreen = ({ route, navigation }) => {
     });
   };
   
-
+  // ----------------------------------------------------------------
+  // delete user 
+  // ----------------------------------------------------------------
+  const handleDeleteUser = async (user) => {
+    try {
+      const db = getDatabase();
+  
+      // Delete user from 'users' node
+      const userRef = ref(db, `users/${user.id}`);
+      await set(userRef, null); // Use set(null) to delete a node
+  
+      // If the user is a worker, delete their data from 'workers' node
+      if (user.worker_id) {
+        const workerRef = ref(db, `workers/${user.worker_id}`);
+        await set(workerRef, null); // Use set(null) to delete a node
+      }
+  
+      Alert.alert("Success", `${user.first_name} ${user.last_name} has been deleted.`);
+      fetchUsers(filter); // Refresh the list
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      Alert.alert("Error", "Failed to delete the user.");
+    }
+  };
+  
+  
   // ----------------------------------------------------------------
   // SAVE EDIT
   // ----------------------------------------------------------------
@@ -535,6 +560,23 @@ const AdminPanelScreen = ({ route, navigation }) => {
                 <Text style={styles.editButtonText}>Edit</Text>
               </TouchableOpacity>
             )}
+            {/* Delete User Button */}
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() =>
+              Alert.alert(
+                "Delete User",
+                `Are you sure you want to delete ${item.first_name} ${item.last_name}?`,
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Delete", onPress: () => handleDeleteUser(item) },
+                ]
+              )
+            }
+          >
+            <Ionicons name="trash" size={16} color="#fff" />
+            <Text style={styles.deleteButtonText}>Delete User</Text>
+          </TouchableOpacity>
           </>
         ) : null}
       </View>
@@ -745,6 +787,21 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "600",
   },
+  deleteButton: {
+    backgroundColor: "#C0392B",
+    borderRadius: 8,
+    padding: 10,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  deleteButtonText: {
+    color: "#fff",
+    marginLeft: 5,
+    fontWeight: "600",
+  },
+  
 });
 
 // ----------------------------------------------------------------
