@@ -1,62 +1,41 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Entypo } from '@expo/vector-icons';
-import { getAuth } from 'firebase/auth';
 import { getDatabase, ref, get } from 'firebase/database';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@react-native-community/datetimepicker'; // Sélecteur de date
 import { handleFileUpload } from '../scripts/updateProductivity';
-import { assignUsersToShifts } from '../scripts/assignmentLogic';
+import { assignUsersToShifts } from '../scripts/assignmentLogic'; // Logique d'assignation
 
 export default function ManagerHome({ navigation }) {
   const [pendingCount, setPendingCount] = useState(0);
-  const [approvedCount, setApprovedCount] = useState(0);
   const [assignMessage, setAssignMessage] = useState('');
-  const [selectedWeek, setSelectedWeek] = useState(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [manager, setManager] = useState({ first_name: '', last_name: '' });
-  const auth = getAuth();
-  const currentUser = auth.currentUser;
+  const [selectedWeek, setSelectedWeek] = useState(null); // Stocke la semaine sélectionnée
+  const [showDatePicker, setShowDatePicker] = useState(false); // Contrôle l'affichage du sélecteur de date
   const database = getDatabase();
 
   useEffect(() => {
-    if (currentUser) {
-      fetchManager(currentUser.uid);
-    }
-    fetchUserCounts();
-  }, [currentUser]);
+    const fetchPendingUsers = async () => {
+      try {
+        const usersRef = ref(database, 'users');
+        const snapshot = await get(usersRef);
 
-  const fetchManager = async (userId) => {
-    try {
-      const userRef = ref(database, `users/${userId}`);
-      const snapshot = await get(userRef);
-      if (snapshot.exists()) {
-        setManager(snapshot.val());
-      } else {
-        console.log('Manager not found.');
+        if (snapshot.exists()) {
+          const usersData = snapshot.val();
+          const pendingUsers = Object.values(usersData).filter(user => user.status === 'pending');
+          setPendingCount(pendingUsers.length);
+        } else {
+          setPendingCount(0);
+        }
+      } catch (error) {
+        console.error('Error fetching pending users:', error);
       }
-    } catch (error) {
-      console.error('Error fetching manager data:', error);
-    }
-  };
+    };
 
-  const fetchUserCounts = async () => {
-    try {
-      const usersRef = ref(database, 'users');
-      const snapshot = await get(usersRef);
+    fetchPendingUsers();
+  }, []);
 
-      if (snapshot.exists()) {
-        const usersData = snapshot.val();
-        const pendingUsers = Object.values(usersData).filter(user => user.status === 'pending');
-        const approvedUsers = Object.values(usersData).filter(user => user.status === 'approved');
-        setPendingCount(pendingUsers.length);
-        setApprovedCount(approvedUsers.length);
-      } else {
-        setPendingCount(0);
-        setApprovedCount(0);
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-    }
+  const handleNavigate = (screen) => {
+    navigation.navigate(screen);
   };
 
   const handleAssignShifts = async () => {
@@ -112,17 +91,17 @@ export default function ManagerHome({ navigation }) {
       setSelectedWeek(startOfWeek);
     }
   };
+  
 
   return (
     <View style={styles.container}>
+      <View style={styles.headerContainer}>
+        <Text style={styles.header}>Welcome, Manager</Text>
+        <Text style={styles.subHeader}>Your Dashboard</Text>
+      </View>
+
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <Text style={styles.header}>
-            Welcome, Manager <Text style={styles.managerName}>{`${manager.first_name} ${manager.last_name}`}</Text>
-          </Text>
-        </View>
-        {/* Overview Section */}
+        {/* Overview Cards */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Overview</Text>
           <View style={styles.cardRow}>
@@ -136,53 +115,48 @@ export default function ManagerHome({ navigation }) {
               <Text style={styles.cardTitle}>Pending Accounts</Text>
               <Text style={styles.cardNumber}>{pendingCount}</Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => navigation.navigate('UserPanel', { filter: 'approved' })}
-            >
-              <View style={styles.cardIcon}>
-                <Entypo name="check" size={32} color="#4CAF50" />
-              </View>
-              <Text style={styles.cardTitle}>Approved Accounts</Text>
-              <Text style={styles.cardNumber}>{approvedCount}</Text>
-            </TouchableOpacity>
           </View>
+        </View>
 
+        {/* Quick Actions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.cardRow}>
             <TouchableOpacity
-              style={styles.card}
-              onPress={() => {
-                const today = new Date();
-                const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 1));
-                const weekId = `week_${startOfWeek.toISOString().split('T')[0]}`;
-                const selectedDate = startOfWeek.toISOString().split('T')[0];
-
-                navigation.navigate('AddWorkersNeededScreen', {
-                  weekId,
-                  selectedDate,
-                });
-              }}
+              style={styles.actionCard}
+              onPress={() => navigation.navigate('UserPanel', { filter: 'approved' })}
             >
-              <View style={styles.cardIcon}>
-                <Entypo name="add-user" size={32} color="#4CAF50" />
-              </View>
-              <Text style={styles.cardTitle}>Add Workers</Text>
+              <Text style={styles.actionCardText}>Approved Accounts</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.card}
-              onPress={() => navigation.navigate('ManagerCalendar')}
-            >
-              <View style={styles.cardIcon}>
-                <Entypo name="calendar" size={32} color="#4CAF50" />
-              </View>
-              <Text style={styles.cardTitle}>View Calendar</Text>
+  style={styles.actionCard}
+  onPress={() => {
+    const today = new Date();
+    const startOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 1)); // Set to Monday of the current week
+    const weekId = `week_${startOfWeek.toISOString().split('T')[0]}`;
+    const selectedDate = startOfWeek.toISOString().split('T')[0];
+
+    navigation.navigate('AddWorkersNeededScreen', {
+      weekId,
+      selectedDate,
+    });
+  }}
+>
+  <Text style={styles.actionCardText}>Add Workers</Text>
+</TouchableOpacity>
+
+            </View>
+            <View style={styles.cardRow}>
+
+
+            <TouchableOpacity style={styles.actionCard} onPress={() => handleNavigate('ManagerCalendar')}>
+              <Text style={styles.actionCardText}>View Calendar</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* File Upload Section */}
+        {/* File Upload Button */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Productivity Update</Text>
           <TouchableOpacity style={styles.fileUploadButton} onPress={handleFileUpload}>
@@ -190,7 +164,7 @@ export default function ManagerHome({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Shift Assignments */}
+        {/* Assign Shifts Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shift Assignments</Text>
           <TouchableOpacity
@@ -227,19 +201,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5FAFB',
   },
   headerContainer: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F5FAFB',
+    padding: 30,
+    backgroundColor: '#4CAF50',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   header: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#4CAF50',
-    paddingTop: 10
+    color: '#FFFFFF',
   },
-  managerName: {
-    fontWeight: 'normal',
+  subHeader: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    marginTop: 5,
   },
   content: {
     padding: 16,
@@ -256,7 +231,6 @@ const styles = StyleSheet.create({
   cardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -285,12 +259,37 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     marginTop: 8,
   },
-  fileUploadButton: {
-    backgroundColor: '#007BFF',
+  actionCard: {
+    backgroundColor: '#4CAF50',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
+    width: '48%',
     alignItems: 'center',
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
+    justifyContent: 'center',
+  },
+  actionCardText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  fileUploadButton: {
+    backgroundColor: '#007BFF',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
     justifyContent: 'center',
   },
   fileUploadButtonText: {
@@ -300,10 +299,11 @@ const styles = StyleSheet.create({
   },
   datePickerButton: {
     backgroundColor: '#007BFF',
-    borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 12,
   },
   datePickerButtonText: {
     fontSize: 16,
@@ -312,10 +312,15 @@ const styles = StyleSheet.create({
   },
   assignButton: {
     backgroundColor: '#FF5722',
-    borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
+    borderRadius: 12,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 2,
     justifyContent: 'center',
   },
   assignButtonText: {
