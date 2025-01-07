@@ -78,8 +78,21 @@ function ManagerTabs() {
       })}
     >
       <Tab.Screen name="ManagerHome" component={ManagerHome} options={{ headerShown: false }} />
-      <Tab.Screen name="AddWorkersNeededScreen" component={AddWorkersNeededScreen} initialParams={{weekId: `week_${new Date().toISOString().split('T')[0]}`, selectedDate: new Date().toISOString().split('T')[0],}}options={{ headerShown: false }}
+      <Tab.Screen
+  name="AddWorkersNeededScreen"
+  component={AddWorkersNeededScreen}
+  initialParams={{
+    weekId: `week_${new Date(new Date().setDate(new Date().getDate() - new Date().getDay() + 1))
+      .toISOString()
+      .split('T')[0]}`,
+    selectedDate: new Date(new Date().setDate(new Date().getDate() - new Date().getDay() + 1))
+      .toISOString()
+      .split('T')[0],
+  }}
+  options={{ headerShown: false }}
 />
+
+
 
 
     </Tab.Navigator>
