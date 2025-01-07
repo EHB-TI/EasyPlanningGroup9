@@ -1,15 +1,18 @@
-import { update, ref, get } from 'firebase/database'; // Importer `get` pour lire les données existantes.
-import { v4 as uuidv4 } from 'uuid'; // Pour générer un ID unique.
+// assignmentLogic.js
+
+import { update, ref, get } from 'firebase/database'; // Import `get` voor het lezen van bestaande data
+import { v4 as uuidv4 } from 'uuid'; // Voor het genereren van unieke IDs
+import { parseISO, isValid, startOfWeek, endOfWeek } from 'date-fns';
 
 /**
- * Assign users to shifts for the selected week.
+ * Assign users to shifts for the selected week without exceeding max_workers.
  *
- * @param {Object} shifts - All shifts from the database.
- * @param {Object} users - All users from the database.
- * @param {Object} workers - All workers from the database.
- * @param {Object} applications - All applications from the database.
- * @param {Date} selectedDate - Any date within the selected week.
- * @param {Object} databaseRef - Firebase database reference for updates.
+ * @param {Object} shifts - Alle shifts uit de database.
+ * @param {Object} users - Alle users uit de database.
+ * @param {Object} workers - Alle workers uit de database.
+ * @param {Object} applications - Alle applications uit de database.
+ * @param {String} selectedDate - Elke datum binnen de geselecteerde week in 'yyyy-MM-dd' formaat.
+ * @param {Object} databaseRef - Firebase database referentie voor updates.
  * @returns {Object} { pendingAssignments }
  */
 export async function assignUsersToShifts(
@@ -21,99 +24,166 @@ export async function assignUsersToShifts(
   databaseRef
 ) {
   console.log('[assignUsersToShifts] START');
-    console.log('[assignUsersToShifts] Shifts:', shifts);
-    console.log('[assignUsersToShifts] Users:', users);
-    console.log('[assignUsersToShifts] Workers:', workers);
-    console.log('[assignUsersToShifts] Applications:', applications);
-    console.log('[assignUsersToShifts] Selected Date:', selectedDate);
-  console.log('[assignUsersToShifts] START - Assigning for week:', selectedDate);
+  console.log('[assignUsersToShifts] Shifts:', shifts);
+  console.log('[assignUsersToShifts] Users:', users);
+  console.log('[assignUsersToShifts] Workers:', workers);
+  console.log('[assignUsersToShifts] Applications:', applications);
+  console.log('[assignUsersToShifts] Selected Date:', selectedDate);
 
-  // Calculer le lundi de la semaine
-  const selectedDay = new Date(selectedDate);
-  const dayOfWeek = selectedDay.getDay(); // 0 (dimanche) à 6 (samedi)
-  const mondayOfWeek = new Date(selectedDay);
-  mondayOfWeek.setDate(selectedDay.getDate() - ((dayOfWeek + 6) % 7)); // Ramène au lundi
+  try {
+    // Parse selectedDate
+    const selectedDay = parseISO(selectedDate);
+    if (!isValid(selectedDay)) {
+      throw new RangeError(`Invalid selectedDate: ${selectedDate}`);
+    }
 
-  // Calculer le dimanche de la semaine
-  const sundayOfWeek = new Date(mondayOfWeek);
-  sundayOfWeek.setDate(mondayOfWeek.getDate() + 6); // Ajoute 6 jours pour arriver au dimanche
+    // Calculate Monday and Sunday of the selected week
+    const mondayOfWeek = startOfWeek(selectedDay, { weekStartsOn: 1 }); // Maandag als eerste dag
+    const sundayOfWeek = endOfWeek(selectedDay, { weekStartsOn: 1 }); // Zondag als laatste dag
 
-  console.log(`[assignUsersToShifts] Week range: ${mondayOfWeek.toISOString()} to ${sundayOfWeek.toISOString()}`);
-
-  // Filtrer les shifts pour la semaine sélectionnée
-  const filteredShifts = Object.entries(shifts).filter(([shiftId, shift]) => {
-    const shiftDate = new Date(shift.date);
-    return shiftDate >= mondayOfWeek && shiftDate <= sundayOfWeek;
-  });
-
-  if (filteredShifts.length === 0) {
-    console.log('[assignUsersToShifts] No shifts found for the selected week.');
-    return { pendingAssignments: {} };
-  }
-
-  const pendingAssignments = {};
-  const applicationStatusUpdates = {};
-
-  for (const [shiftId, shift] of filteredShifts) {
-    const requiredWorkers = shift.max_workers || 0;
-    if (requiredWorkers === 0) continue;
-
-    const shiftApplications = Object.entries(applications).filter(
-      ([appId, app]) => app.shift_id === shiftId && app.status === 'applied'
+    console.log(
+      `[assignUsersToShifts] Week range: ${mondayOfWeek.toISOString()} to ${sundayOfWeek.toISOString()}`
     );
 
-    if (shiftApplications.length === 0) continue;
-
-    const sortedApplications = shiftApplications.sort(([, a], [, b]) => {
-      const userA = users[a.worker_id];
-      const userB = users[b.worker_id];
-
-      const contractPriority = { CDI: 1, CDD: 2, Student: 3 };
-      const priorityA = contractPriority[userA.contract] || 4;
-      const priorityB = contractPriority[userB.contract] || 4;
-
-      if (priorityA !== priorityB) return priorityA - priorityB;
-      return (userB.productivity_last_3_months || 0) - (userA.productivity_last_3_months || 0);
+    // Filter shifts voor de geselecteerde week en sluit gesloten shifts uit
+    const filteredShifts = Object.entries(shifts).filter(([shiftId, shift]) => {
+      const shiftDate = parseISO(shift.date);
+      if (!isValid(shiftDate)) {
+        console.error(`[assignUsersToShifts] Invalid date for shift ${shiftId}: ${shift.date}`);
+        return false;
+      }
+      return shiftDate >= mondayOfWeek && shiftDate <= sundayOfWeek && shift.status !== 'closed';
     });
 
-    const assignedUsers = sortedApplications.slice(0, requiredWorkers);
+    console.log(`[assignUsersToShifts] Found ${filteredShifts.length} valid shifts for the week.`);
 
-    pendingAssignments[shiftId] = assignedUsers.map(([appId]) => appId);
+    if (filteredShifts.length === 0) {
+      console.log('[assignUsersToShifts] No shifts found for the selected week.');
+      return { pendingAssignments: {} };
+    }
 
-    // Charger les assigned_workers actuels
-    const shiftRef = ref(databaseRef, `shifts/${shiftId}/assigned_workers`);
-    const currentAssignedWorkersSnapshot = await get(shiftRef);
-    const currentAssignedWorkers = currentAssignedWorkersSnapshot.exists()
-      ? currentAssignedWorkersSnapshot.val()
-      : [];
+    const pendingAssignments = {};
+    const applicationStatusUpdates = {};
 
-    // Vérifier les doublons et ajouter uniquement les nouveaux
-    const updatedAssignedWorkers = [...new Set([...currentAssignedWorkers, ...assignedUsers.map(([_, app]) => app.worker_id)])];
+    for (const [shiftId, shift] of filteredShifts) {
+      console.log(`[assignUsersToShifts] Processing shift ${shiftId} on ${shift.date}`);
 
-    assignedUsers.forEach(([appId, app]) => {
-      // Update application status to "assigned"
-      applicationStatusUpdates[`applications/${appId}/status`] = 'assigned';
+      const requiredWorkers = shift.max_workers || 0;
+      if (requiredWorkers === 0) {
+        console.log(`[assignUsersToShifts] Shift ${shiftId} has no required workers. Skipping.`);
+        continue;
+      }
 
-      // Generate unique ID for assignment
-      const assignmentId = uuidv4();
+      // Haal huidige toegewezen workers op
+      const shiftRef = ref(databaseRef, `shifts/${shiftId}/assigned_workers`);
+      const currentAssignedWorkersSnapshot = await get(shiftRef);
+      const currentAssignedWorkers = currentAssignedWorkersSnapshot.exists()
+        ? currentAssignedWorkersSnapshot.val()
+        : [];
 
-      // Create a new assignment entry
-      applicationStatusUpdates[`assignments/${assignmentId}`] = {
-        shift_id: shiftId,
-        user_id: app.worker_id,
-        assigned_at: new Date().toISOString(),
-      };
-    });
+      console.log(`[assignUsersToShifts] Current assigned workers for shift ${shiftId}:`, currentAssignedWorkers);
 
-    // Mettre à jour les assigned_workers dans Firebase
-    applicationStatusUpdates[`shifts/${shiftId}/assigned_workers`] = updatedAssignedWorkers;
-    applicationStatusUpdates[`shifts/${shiftId}/updated_at`] = new Date().toISOString();
+      // Bereken beschikbare slots
+      const availableWorkers = requiredWorkers - currentAssignedWorkers.length;
+      if (availableWorkers <= 0) {
+        console.log(`[assignUsersToShifts] Shift ${shiftId} is already full. Skipping.`);
+        continue;
+      }
+
+      console.log(`[assignUsersToShifts] Available slots for shift ${shiftId}: ${availableWorkers}`);
+
+      // Filter applications voor de huidige shift met status 'applied'
+      const shiftApplications = Object.entries(applications).filter(
+        ([appId, app]) => app.shift_id === shiftId && app.status === 'applied'
+      );
+
+      console.log(`[assignUsersToShifts] Found ${shiftApplications.length} applied applications for shift ${shiftId}.`);
+
+      if (shiftApplications.length === 0) {
+        console.log(`[assignUsersToShifts] No applied applications for shift ${shiftId}. Skipping.`);
+        continue;
+      }
+
+      // Sorteer applications op basis van contractprioriteit en productiviteit
+      const sortedApplications = shiftApplications.sort(([, a], [, b]) => {
+        const userA = users[a.worker_id];
+        const userB = users[b.worker_id];
+
+        if (!userA || !userB) {
+          console.warn(`[assignUsersToShifts] Missing user data for application comparison. AppA: ${a.worker_id}, AppB: ${b.worker_id}`);
+          return 0;
+        }
+
+        const contractPriority = { CDI: 1, CDD: 2, Student: 3 };
+        const priorityA = contractPriority[userA.contract] || 4;
+        const priorityB = contractPriority[userB.contract] || 4;
+
+        if (priorityA !== priorityB) return priorityA - priorityB;
+        return (userB.productivity_last_3_months || 0) - (userA.productivity_last_3_months || 0);
+      });
+
+      console.log(`[assignUsersToShifts] Applications sorted for shift ${shiftId}.`);
+
+      // Wijs alleen toe tot het beschikbare aantal slots
+      const assignedUsers = sortedApplications.slice(0, availableWorkers);
+      pendingAssignments[shiftId] = assignedUsers.map(([appId]) => appId);
+
+      console.log(`[assignUsersToShifts] Assigning ${assignedUsers.length} users to shift ${shiftId}.`);
+
+      // Update assigned_workers zonder duplicaten
+      const updatedAssignedWorkers = [
+        ...new Set([
+          ...currentAssignedWorkers,
+          ...assignedUsers.map(([_, app]) => app.worker_id),
+        ]),
+      ];
+
+      console.log(`[assignUsersToShifts] Updated assigned workers for shift ${shiftId}:`, updatedAssignedWorkers);
+
+      assignedUsers.forEach(([appId, app]) => {
+        // Update application status naar "assigned"
+        applicationStatusUpdates[`applications/${appId}/status`] = 'assigned';
+
+        // Genereer unieke ID voor assignment
+        const assignmentId = uuidv4();
+
+        // Maak een nieuwe assignment entry aan
+        applicationStatusUpdates[`assignments/${assignmentId}`] = {
+          assigned_at: new Date().toISOString(),
+          shift_id: shiftId,
+          user_id: app.worker_id,
+        };
+
+        console.log(`[assignUsersToShifts] Created assignment ${assignmentId} for user ${app.worker_id} on shift ${shiftId}.`);
+      });
+
+      // Update assigned_workers en updated_at in shifts
+      applicationStatusUpdates[`shifts/${shiftId}/assigned_workers`] = updatedAssignedWorkers;
+      applicationStatusUpdates[`shifts/${shiftId}/updated_at`] = new Date().toISOString();
+      console.log(`[assignUsersToShifts] Prepared updates for shift ${shiftId}.`);
+    }
+
+    // Batch update Firebase
+    console.log('[assignUsersToShifts] Committing batch updates to Firebase...');
+    await update(ref(databaseRef), applicationStatusUpdates);
+    console.log('[assignUsersToShifts] Batch updates committed successfully.');
+
+    console.log('[assignUsersToShifts] Completed assignments:', pendingAssignments);
+
+    return { pendingAssignments };
+  } catch (error) {
+    console.error('[assignUsersToShifts] Error:', error);
+    throw error; // Propagate the error to be handled by the caller
   }
+}
 
-  // Batch update Firebase
-  await update(ref(databaseRef), applicationStatusUpdates);
-
-  console.log('[assignUsersToShifts] Completed assignments:', pendingAssignments);
-
-  return { pendingAssignments };
+/**
+ * Helper function to validate date strings.
+ *
+ * @param {String} dateString - Date string to validate.
+ * @returns {Boolean} - True if valid, false otherwise.
+ */
+function isValidDate(dateString) {
+  const date = parseISO(dateString);
+  return isValid(date);
 }

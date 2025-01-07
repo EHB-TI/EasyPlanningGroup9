@@ -38,6 +38,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
   const [weekData, setWeekData] = useState({});
   const [selectedDay, setSelectedDay] = useState('');
   const [loading, setLoading] = useState(true);
+  const [autoAssigned, setAutoAssigned] = useState(false); // Flag om meerdere auto-assigns te voorkomen
 
   useEffect(() => {
     if (!selectedWeek) {
@@ -53,7 +54,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
       setLoading(true);
       console.log('[CreatePlanningScreen] Fetching week data...');
 
-      // 1) Fetch shifts
+      // 1) Haal shifts op
       const shiftsSnap = await get(child(ref(realtimeDB), 'shifts'));
       const shiftsVal = shiftsSnap.val() || {};
       console.log(`[CreatePlanningScreen] Fetched ${Object.keys(shiftsVal).length} shifts.`);
@@ -66,7 +67,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
       }
       console.log(`[CreatePlanningScreen] Found ${Object.keys(weekShifts).length} shifts for the selected week.`);
 
-      // 2) Fetch applications
+      // 2) Haal applications op
       const appsSnap = await get(child(ref(realtimeDB), 'applications'));
       const allApps = appsSnap.val() || {};
       console.log(`[CreatePlanningScreen] Fetched ${Object.keys(allApps).length} applications.`);
@@ -79,12 +80,12 @@ export default function CreatePlanningScreen({ navigation, route }) {
       }
       console.log(`[CreatePlanningScreen] Found ${Object.keys(weekApps).length} applications for the selected shifts.`);
 
-      // 3) Fetch users
+      // 3) Haal users op
       const usersSnap = await get(child(ref(realtimeDB), 'users'));
       const usersVal = usersSnap.val() || {};
       console.log(`[CreatePlanningScreen] Fetched ${Object.keys(usersVal).length} users.`);
 
-      // 4) Fetch workers
+      // 4) Haal workers op
       const workersSnap = await get(child(ref(realtimeDB), 'workers'));
       const workersVal = workersSnap.val() || {};
       console.log(`[CreatePlanningScreen] Fetched ${Object.keys(workersVal).length} workers.`);
@@ -94,23 +95,26 @@ export default function CreatePlanningScreen({ navigation, route }) {
       setUsers(usersVal);
       setWorkers(workersVal);
 
-      // Auto-assign (only sets application statuses)
-      console.log('[CreatePlanningScreen] Auto-assigning statuses...');
-      const assignmentResult = await assignUsersToShifts(
-        weekShifts,
-        usersVal,
-        workersVal,
-        weekApps,
-        selectedWeek.start_date, // Assuming start_date is within the week
-        realtimeDB
-      );
-      console.log('[CreatePlanningScreen] Assignment Result:', assignmentResult);
+      // Auto-assign uitvoeren als het nog niet is gedaan
+      if (!autoAssigned) {
+        console.log('[CreatePlanningScreen] Auto-assigning statuses...');
+        const assignmentResult = await assignUsersToShifts(
+          weekShifts,
+          usersVal,
+          workersVal,
+          weekApps,
+          selectedWeek.start_date, // Aangenomen dat start_date binnen de week valt
+          realtimeDB
+        );
+        console.log('[CreatePlanningScreen] Assignment Result:', assignmentResult);
+        setAutoAssigned(true); // Zet de vlag om herhaalde assigns te voorkomen
+      }
 
-      // Build UI
+      // Bouw de UI data
       console.log('[CreatePlanningScreen] Building week data...');
       await buildWeekData(weekShifts);
 
-      // Select first day with shifts
+      // Selecteer de eerste dag met shifts
       const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       const firstDayWithShift = daysOfWeek.find((day) => weekData[day]?.shiftId);
       setSelectedDay(firstDayWithShift || 'Monday');
@@ -126,7 +130,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
 
   const buildWeekData = async (weekShifts) => {
     try {
-      // Re-fetch shifts to get the latest data
+      // Re-fetch shifts om de nieuwste data te krijgen
       const newShiftsSnap = await get(child(ref(realtimeDB), 'shifts'));
       const allShifts = newShiftsSnap.val() || {};
       console.log(`[buildWeekData] Re-fetched ${Object.keys(allShifts).length} shifts.`);
@@ -139,12 +143,12 @@ export default function CreatePlanningScreen({ navigation, route }) {
       }
       console.log(`[buildWeekData] Updated week shifts count: ${Object.keys(updatedWeekShifts).length}`);
 
-      // Re-fetch applications to get the latest data
+      // Re-fetch applications om de nieuwste data te krijgen
       const appsSnap = await get(child(ref(realtimeDB), 'applications'));
       const allApps = appsSnap.val() || {};
       console.log(`[buildWeekData] Re-fetched ${Object.keys(allApps).length} applications.`);
 
-      // Prepare day-based structure
+      // Bereid de structuur per dag voor
       const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       const newWeekData = {};
       daysOfWeek.forEach((d) => {
@@ -157,14 +161,14 @@ export default function CreatePlanningScreen({ navigation, route }) {
         };
       });
 
-      // Fill shift data
+      // Vul shift data in
       for (const [shiftId, shift] of Object.entries(updatedWeekShifts)) {
         if (!isValidDate(shift.date)) {
           console.error(`Invalid date format for shift ${shiftId}: ${shift.date}`);
           continue;
         }
         const dateObj = parseISO(shift.date);
-        const dayName = format(dateObj, 'EEEE'); // Full day name in English
+        const dayName = format(dateObj, 'EEEE'); // Volledige dagnaam in het Engels
 
         if (!newWeekData[dayName]) {
           console.warn(`Day name "${dayName}" not recognized.`);
@@ -174,10 +178,11 @@ export default function CreatePlanningScreen({ navigation, route }) {
         newWeekData[dayName].date = shift.date;
         newWeekData[dayName].shiftId = shiftId;
         newWeekData[dayName].maxWorkers = shift.max_workers || 0;
+        newWeekData[dayName].assignedWorkers = shift.assigned_workers || [];
       }
       console.log('[buildWeekData] Shift data filled in weekData.');
 
-      // Fill applications
+      // Vul applications in
       for (const [appId, app] of Object.entries(allApps)) {
         if (!updatedWeekShifts[app.shift_id]) continue;
         const shift = updatedWeekShifts[app.shift_id];
@@ -186,7 +191,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
           continue;
         }
         const dateObj = parseISO(shift.date);
-        const dayName = format(dateObj, 'EEEE'); // Full day name in English
+        const dayName = format(dateObj, 'EEEE'); // Volledige dagnaam in het Engels
         if (!newWeekData[dayName]) continue;
 
         const userId = app.worker_id;
@@ -197,9 +202,11 @@ export default function CreatePlanningScreen({ navigation, route }) {
           status: app.status,
         });
 
-        // If status=assigned => show in "Currently Assigned"
+        // Als status=assigned => toon in "Currently Assigned"
         if (app.status === 'assigned') {
-          newWeekData[dayName].assignedWorkers.push(userId);
+          if (!newWeekData[dayName].assignedWorkers.includes(userId)) {
+            newWeekData[dayName].assignedWorkers.push(userId);
+          }
         }
       }
       console.log('[buildWeekData] Application data filled in weekData.');
@@ -214,15 +221,20 @@ export default function CreatePlanningScreen({ navigation, route }) {
 
   function getWorkerDisplayName(userId) {
     const userObj = users[userId];
-    if (!userObj) return `Unknown user ${userId}`;
-
-    const wId = userObj.worker_id;
-    const workerObj = workers[wId];
-    if (!workerObj) return `${userObj.first_name} ${userObj.last_name} (no worker doc)`;
-
+    if (!userObj) {
+      console.warn(`User not found in users state: ${userId}`);
+      return `Unknown user ${userId}`;
+    }
+  
+    // Omdat worker_id eigenlijk user_id is, gebruik je direct workers[userId]
+    const workerObj = workers[userId];
+    if (!workerObj) {
+      console.warn(`Worker not found for user_id ${userId}`);
+      return `${userObj.first_name} ${userObj.last_name} (no worker doc)`;
+    }
+  
     return `${userObj.first_name} ${userObj.last_name} - ${workerObj.contract_type || 'N/A'}`;
   }
-
   const handleRemove = async (dayName, userId) => {
     const dayData = weekData[dayName];
     if (!dayData) return;
@@ -231,7 +243,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
       const shiftId = dayData.shiftId;
       const newAssigned = dayData.assignedWorkers.filter((id) => id !== userId);
 
-      // 1) Find the relevant application to revert
+      // 1) Vind de relevante application om terug te zetten
       let appIdToUpdate = null;
       for (const applicant of dayData.applicantList) {
         if (applicant.user_id === userId && applicant.status === 'assigned') {
@@ -240,7 +252,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
         }
       }
 
-      // 2) Find the assignment record in /assignments for (shiftId, userId)
+      // 2) Vind het assignment record in /assignments voor (shiftId, userId)
       const assignmentsSnap = await get(child(ref(realtimeDB), 'assignments'));
       const allAssignments = assignmentsSnap.val() || {};
 
@@ -252,23 +264,23 @@ export default function CreatePlanningScreen({ navigation, route }) {
         }
       }
 
-      // 3) Build updates
+      // 3) Bouw updates
       const updates = {};
 
-      // Remove user from shift.assigned_workers
+      // Verwijder user uit shift.assigned_workers
       updates[`shifts/${shiftId}/assigned_workers`] = newAssigned;
 
-      // Revert application status if found
+      // Zet application status terug als gevonden
       if (appIdToUpdate) {
         updates[`applications/${appIdToUpdate}/status`] = 'applied';
       }
 
-      // Delete the assignment record if found
+      // Verwijder het assignment record als gevonden
       if (assignmentIdToDelete) {
         updates[`assignments/${assignmentIdToDelete}`] = null;
       }
 
-      // 4) If the user is a student, decrement hours
+      // 4) Als de user een student is, verlaag uren
       const userObj = users[userId];
       if (userObj) {
         const wId = userObj.worker_id;
@@ -279,16 +291,16 @@ export default function CreatePlanningScreen({ navigation, route }) {
         }
       }
 
-      // 5) Commit all updates at once
+      // 5) Commit alle updates tegelijk
       await update(ref(realtimeDB), updates);
       console.log(`[handleRemove] Removed user ${userId} from shift ${shiftId}. Updates:`, updates);
 
-      // 6) Update local state
+      // 6) Update lokale state
       setWeekData((prev) => {
         const updatedDay = { ...prev[dayName] };
         updatedDay.assignedWorkers = newAssigned;
 
-        // Mark the applicant as 'applied' again if found
+        // Zet de applicant status terug naar 'applied' als gevonden
         updatedDay.applicantList = updatedDay.applicantList.map((app) => {
           if (app.application_id === appIdToUpdate) {
             return { ...app, status: 'applied' };
@@ -306,7 +318,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
     }
   };
 
-  // De complete functie met uitgebreide logging
+  // De handleComplete functie is aangepast om geen extra assignments te maken
   const handleComplete = async () => {
     try {
       console.log('[handleComplete] Starting to finalize assignments...');
@@ -332,14 +344,24 @@ export default function CreatePlanningScreen({ navigation, route }) {
         updates[`shifts/${shiftId}/assigned_workers`] = finalAssigned;
         updates[`shifts/${shiftId}/updated_at`] = new Date().toISOString();
 
-        // 2) Maak assignment entries
+        // 2) Maak assignment entries alleen als ze nog niet bestaan
         for (const userId of assignedUserIds) {
-          const assignmentId = uuidv4();
-          updates[`assignments/${assignmentId}`] = {
-            assigned_at: new Date().toISOString(),
-            shift_id: shiftId,
-            user_id: userId,
-          };
+          // Controleer of een assignment al bestaat voor deze shift en user
+          const existingAssignmentsSnap = await get(child(ref(realtimeDB), 'assignments'));
+          const existingAssignments = existingAssignmentsSnap.val() || {};
+          const hasAssignment = Object.values(existingAssignments).some(
+            (asObj) => asObj.shift_id === shiftId && asObj.user_id === userId
+          );
+
+          if (!hasAssignment) {
+            const assignmentId = uuidv4();
+            updates[`assignments/${assignmentId}`] = {
+              assigned_at: new Date().toISOString(),
+              shift_id: shiftId,
+              user_id: userId,
+            };
+            console.log(`[handleComplete] Created assignment ${assignmentId} for user ${userId} on shift ${shiftId}.`);
+          }
         }
 
         console.log(`[handleComplete] Shift ${shiftId} assigned to users:`, assignedUserIds);
@@ -371,13 +393,13 @@ export default function CreatePlanningScreen({ navigation, route }) {
     try {
       const shiftId = dayData.shiftId;
       const userId = applicant.user_id;
-      const appId = applicant.application_id; // The ID of the application
+      const appId = applicant.application_id; // The ID van de application
 
       const updates = {
         [`applications/${appId}/status`]: 'assigned',
       };
 
-      // If user is student, increment hours
+      // Als de user een student is, verhoog uren
       const userObj = users[userId];
       if (userObj) {
         const wId = userObj.worker_id;
@@ -395,7 +417,7 @@ export default function CreatePlanningScreen({ navigation, route }) {
       await update(ref(realtimeDB), updates);
       console.log(`[handleManualAssign] Assigned user ${userId} to shift ${shiftId}. Updates:`, updates);
 
-      // Locally mark status='assigned' but keep it in applicantList
+      // Markeer lokaal status='assigned' maar houd het in applicantList
       setWeekData((prev) => {
         const updatedDay = { ...prev[dayName] };
         updatedDay.assignedWorkers = [...updatedDay.assignedWorkers, userId];
