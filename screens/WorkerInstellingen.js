@@ -22,20 +22,22 @@ export default function WorkerInstellingen({ navigation }) {
     );
   };
 
+  const dynamicStyles = styles(isDarkMode);
+
   return (
-    <View style={styles.container}>
+    <View style={dynamicStyles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#333" />
+      <View style={dynamicStyles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={dynamicStyles.backButton}>
+          <Ionicons name="arrow-back" size={24} color={isDarkMode ? '#FFF' : '#333'} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Instellingen</Text>
+        <Text style={dynamicStyles.headerTitle}>Instellingen</Text>
         <View style={{ width: 24 }} /> {/* Placeholder for symmetry */}
       </View>
 
       {/* Notifications */}
-      <View style={styles.settingRow}>
-        <Text style={styles.settingText}>Notificaties</Text>
+      <View style={dynamicStyles.settingRow}>
+        <Text style={dynamicStyles.settingText}>Notificaties</Text>
         <Switch
           value={notificationsEnabled}
           onValueChange={(value) => setNotificationsEnabled(value)}
@@ -43,60 +45,61 @@ export default function WorkerInstellingen({ navigation }) {
       </View>
 
       {/* Dark Mode */}
-      <View style={styles.settingRow}>
-        <Text style={styles.settingText}>Donkere modus</Text>
+      <View style={dynamicStyles.settingRow}>
+        <Text style={dynamicStyles.settingText}>Donkere modus</Text>
         <Switch value={isDarkMode} onValueChange={(value) => setIsDarkMode(value)} />
       </View>
 
       {/* Language */}
-      <TouchableOpacity style={styles.settingRow} onPress={handleLanguageChange}>
-        <Text style={styles.settingText}>Taal</Text>
-        <Ionicons name="chevron-forward" size={24} color="#4CAF50" />
+      <TouchableOpacity style={dynamicStyles.settingRow} onPress={handleLanguageChange}>
+        <Text style={dynamicStyles.settingText}>Taal</Text>
+        <Ionicons name="chevron-forward" size={24} color={isDarkMode ? '#4CAF50' : '#333'} />
       </TouchableOpacity>
 
       {/* Privacy Policy */}
-      <TouchableOpacity style={styles.settingRow} onPress={handlePrivacyPolicy}>
-        <Text style={styles.settingText}>Privacybeleid</Text>
-        <Ionicons name="chevron-forward" size={24} color="#4CAF50" />
+      <TouchableOpacity style={dynamicStyles.settingRow} onPress={handlePrivacyPolicy}>
+        <Text style={dynamicStyles.settingText}>Privacybeleid</Text>
+        <Ionicons name="chevron-forward" size={24} color={isDarkMode ? '#4CAF50' : '#333'} />
       </TouchableOpacity>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 50,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-  },
-  backButton: {
-    padding: 10,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    flex: 1,
-    marginLeft: -24, // Adjusts for the back button width
-  },
-  settingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  settingText: {
-    fontSize: 18,
-    color: '#333333',
-  },
-});
+const styles = (isDarkMode) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDarkMode ? '#121212' : '#FFFFFF',
+      paddingHorizontal: 20,
+      paddingTop: 50,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 30,
+    },
+    backButton: {
+      padding: 10,
+    },
+    headerTitle: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: isDarkMode ? '#FFFFFF' : '#333',
+      textAlign: 'center',
+      flex: 1,
+      marginLeft: -24, // Adjusts for the back button width
+    },
+    settingRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 15,
+      borderBottomWidth: 1,
+      borderBottomColor: isDarkMode ? '#444' : '#E0E0E0',
+    },
+    settingText: {
+      fontSize: 18,
+      color: isDarkMode ? '#FFFFFF' : '#333333',
+    },
+  });
