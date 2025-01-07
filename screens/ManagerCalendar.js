@@ -71,13 +71,15 @@ export default function ManagerCalendar({ navigation }) {
     if (!day.isGray) {
       const selectedDate = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(day.day).padStart(2, "0")}`;
       const selectedShift = shifts[`shift_${selectedDate}`];
-
+  
       if (selectedShift) {
         const weekId = selectedShift.week_id;
         navigation.navigate("AddWorkersNeededScreen", { weekId, selectedDate });
       }
     }
   };
+  
+  
 
   const getShiftStatus = (date) => {
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(date).padStart(2, "0")}`;
@@ -91,11 +93,7 @@ export default function ManagerCalendar({ navigation }) {
 
   return (
     <ScrollView style={styles.container}>
-      
       <View style={styles.headerContainer}>
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={24} color="#2D4535" />
-      </TouchableOpacity>
         <Text style={styles.header}>Manager Kalender</Text>
       </View>
 
@@ -162,17 +160,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5F5F5",
   },
-  backButton: {
-    paddingLeft: 20
-  },
   headerContainer: {
-    flexDirection: "row",
     paddingTop: 50,
     paddingBottom: 20,
+    justifyContent: "center",
     alignItems: "center",
   },
   header: {
-    paddingLeft: 50,
     fontSize: 20,
     fontWeight: "bold",
     color: "#2D4535",

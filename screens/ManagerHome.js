@@ -184,7 +184,7 @@ export default function ManagerHome({ navigation }) {
             </TouchableOpacity>
           </View>
         </View>
-
+ 
         {/* Shift Assignments */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Shift Assignments</Text>
