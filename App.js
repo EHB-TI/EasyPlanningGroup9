@@ -22,7 +22,7 @@ import CreatePlanningScreen from "./screens/CreatePlanningScreen";
 import AdminPanel from "./screens/AdminPanel";
 import WorkerInstellingen from "./screens/WorkerInstellingen";
 import ManagerCalendar from "./screens/ManagerCalendar";
-
+import ManagerMeer from "./screens/ManagerMeer";
 
 
 const Stack = createNativeStackNavigator();
@@ -63,11 +63,11 @@ function ManagerTabs() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-          if (route.name === 'ManagerHome') {
+          if (route.name === 'HOME') {
             iconName = focused ? 'speedometer' : 'speedometer-outline';
-          } else if (route.name === 'ManageShiftRequestScreen') {
-            iconName = focused ? 'clipboard' : 'clipboard-outline';
-          } else if (route.name === 'AddWorkersNeededScreen') {
+          } else if (route.name === 'MEER') {
+            iconName = focused ? 'ellipsis-horizontal' : 'ellipsis-horizontal-outline';
+          } else if (route.name === 'ADD WORKERS') {
             iconName = focused ? 'people' : 'people-outline';
           }
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -77,9 +77,9 @@ function ManagerTabs() {
         tabBarStyle: { height: 60, backgroundColor: '#fff' },
       })}
     >
-      <Tab.Screen name="ManagerHome" component={ManagerHome} options={{ headerShown: false }} />
+      <Tab.Screen name="HOME" component={ManagerHome} options={{ headerShown: false }} />
       <Tab.Screen
-  name="AddWorkersNeededScreen"
+  name="ADD WORKERS"
   component={AddWorkersNeededScreen}
   initialParams={{
     weekId: `week_${new Date(new Date().setDate(new Date().getDate() - new Date().getDay() + 1))
@@ -91,6 +91,8 @@ function ManagerTabs() {
   }}
   options={{ headerShown: false }}
 />
+<Tab.Screen name="MEER" component={ManagerMeer} options={{ headerShown: false }} />
+
 
 
 
@@ -115,6 +117,8 @@ export default function App() {
         {/* Manager Screens */}
         <Stack.Screen name="ManagerHome" component={ManagerTabs} options={{ headerShown: false }} />
         <Stack.Screen name="WorkerSettings" component={WorkerSettings} options={{ headerShown: false }} />
+        <Stack.Screen name="ManagerMeer" component={ManagerMeer} options={{ headerShown: false }} />
+
         <Stack.Screen name="UserPanel" component={UserPanel} options={{ headerShown: false }} />
         <Stack.Screen name="AdminPanel" component={AdminPanel} options={{ headerShown: false }} />
         <Stack.Screen name="ManagerCalendar" component={ManagerCalendar} options={{ headerShown: false }} />
